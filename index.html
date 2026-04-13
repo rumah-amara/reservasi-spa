@@ -1557,7 +1557,7 @@
   let startTime = new Date();
   startTime.setHours(08, 30, 0, 0);
   let endTime = new Date();
-  endTime.setHours(16, 30, 0, 0);
+  endTime.setHours(21, 30, 0, 0);
 
   // --- KONFIGURASI JAM ISTIRAHAT ---
   const BREAK_START_HOUR = 12; // Mulai istirahat jam 12:00
@@ -1568,8 +1568,8 @@
     const currentHour = startTime.getHours();
 
     // Cek apakah waktu saat ini masuk dalam jam istirahat
-    // Logika: Jika jam >= 14 DAN jam < 15, maka anggap sebagai waktu istirahat
-    // Ini akan menyembunyikan slot 14:00 dan 14:30
+    // Logika: Jika jam >= 12 DAN jam < 13 maka anggap sebagai waktu istirahat
+    // Ini akan menyembunyikan slot 12:00 dan 13:00
     const isBreakTime = currentHour >= BREAK_START_HOUR && currentHour < BREAK_END_HOUR;
 
     if (!isBreakTime) {
