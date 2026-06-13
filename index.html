@@ -118,9 +118,12 @@
 
     /* PERBAIKAN 1: Input field dalam mode gelap - lebih kontras */
     html.dark .input-field {
-      background-color: #2d3748; /* Sedikit lebih terang dari #1f2937 untuk kontras lebih baik */
-      border-color: #4a5568;     /* Sedikit lebih kontras dari #4b5563 */
-      color: #f7fafc;            /* Sedikit lebih terang dari #f9fafb untuk keterbacaan lebih baik */
+      background-color: #2d3748;
+      /* Sedikit lebih terang dari #1f2937 untuk kontras lebih baik */
+      border-color: #4a5568;
+      /* Sedikit lebih kontras dari #4b5563 */
+      color: #f7fafc;
+      /* Sedikit lebih terang dari #f9fafb untuk keterbacaan lebih baik */
     }
 
     /* Styling untuk input yang hanya bisa dibaca (readonly) */
@@ -130,8 +133,10 @@
 
     /* PERBAIKAN 2: Input readonly dalam mode gelap - lebih terang dan kontras */
     html.dark .input-readonly {
-      background-color: #4a5568; /* Lebih terang dari #374151 untuk kontras lebih baik */
-      color: #e2e8f0;            /* Warna teks yang lebih kontras */
+      background-color: #4a5568;
+      /* Lebih terang dari #374151 untuk kontras lebih baik */
+      color: #e2e8f0;
+      /* Warna teks yang lebih kontras */
     }
 
     /* Styling untuk kontainer canvas chart */
@@ -296,62 +301,78 @@
 
     /* PERBAIKAN 3: Style untuk modal duplicate patient dalam mode gelap */
     html.dark .duplicate-patient-item {
-      border-color: #4b5563; /* Border lebih terlihat dalam mode gelap */
+      border-color: #4b5563;
+      /* Border lebih terlihat dalam mode gelap */
     }
 
     html.dark .duplicate-patient-item:hover {
-      background-color: #374151; /* Warna hover yang lebih kontras */
+      background-color: #374151;
+      /* Warna hover yang lebih kontras */
     }
 
     /* PERBAIKAN 4: Style untuk search input dalam modal duplicate patient */
     html.dark #duplicate-search-input {
-      background-color: #2d3748; /* Background lebih kontras */
-      border-color: #4a5568;     /* Border lebih terlihat */
-      color: #f7fafc;            /* Teks lebih terang */
+      background-color: #2d3748;
+      /* Background lebih kontras */
+      border-color: #4a5568;
+      /* Border lebih terlihat */
+      color: #f7fafc;
+      /* Teks lebih terang */
     }
 
     html.dark #duplicate-search-input::placeholder {
-      color: #a0aec0; /* Placeholder lebih terlihat */
+      color: #a0aec0;
+      /* Placeholder lebih terlihat */
     }
 
     /* PERBAIKAN 5: Style untuk kontainer daftar pasien dalam modal */
     html.dark #duplicate-list-container .border-gray-200 {
-      border-color: #4b5563; /* Border lebih terlihat */
+      border-color: #4b5563;
+      /* Border lebih terlihat */
     }
 
     html.dark #duplicate-list-container .bg-gray-50 {
-      background-color: #1f2937; /* Background kontainer */
+      background-color: #1f2937;
+      /* Background kontainer */
     }
 
     /* PERBAIKAN 6: Style untuk footer modal duplicate patient dalam mode gelap */
     html.dark #duplicate-patient-modal .bg-gray-50 {
-      background-color: #1f2937; /* Background footer */
+      background-color: #1f2937;
+      /* Background footer */
     }
 
     html.dark #duplicate-patient-modal .border-gray-100 {
-      border-color: #374151; /* Border footer lebih terlihat */
+      border-color: #374151;
+      /* Border footer lebih terlihat */
     }
 
     html.dark #duplicate-patient-modal button.bg-white {
-      background-color: #374151; /* Tombol "Ini Pasien Baru" lebih kontras */
-      color: #e5e7eb;            /* Warna teks tombol */
+      background-color: #374151;
+      /* Tombol "Ini Pasien Baru" lebih kontras */
+      color: #e5e7eb;
+      /* Warna teks tombol */
     }
 
     html.dark #duplicate-patient-modal button.bg-white:hover {
-      background-color: #4b5563; /* Warna hover tombol */
+      background-color: #4b5563;
+      /* Warna hover tombol */
     }
 
     /* PERBAIKAN 7: Style untuk teks dalam modal duplicate patient */
     html.dark .patient-name {
-      color: #f3f4f6; /* Nama pasien lebih terang */
+      color: #f3f4f6;
+      /* Nama pasien lebih terang */
     }
 
     html.dark .patient-rme {
-      color: #9ca3af; /* RME sedikit lebih redup tapi terbaca */
+      color: #9ca3af;
+      /* RME sedikit lebih redup tapi terbaca */
     }
 
     html.dark .patient-info {
-      color: #d1d5db; /* Info pasien lebih terbaca */
+      color: #d1d5db;
+      /* Info pasien lebih terbaca */
     }
 
     /* Keyframes untuk animasi kelopak bunga jatuh */
@@ -487,7 +508,8 @@
     <div class="mb-4">
       <i class="fas fa-calendar-times text-4xl text-red-500 mb-3"></i>
       <h3 class="text-xl font-bold mb-2">Waktu Reservasi Penuh</h3>
-      <p class="text-gray-600 dark:text-gray-300">Maaf, waktu yang Anda pilih sudah penuh. Silakan pilih waktu lain yang tersedia.</p>
+      <p class="text-gray-600 dark:text-gray-300">Maaf, waktu yang Anda pilih sudah penuh. Silakan pilih waktu lain yang
+        tersedia.</p>
     </div>
     <button id="close-full-schedule-popup" class="bg-theme-pink text-white px-4 py-2 rounded-lg w-full">
       Pilih Waktu Lain
@@ -550,7 +572,7 @@
         // Menambahkan event listener 'click' pada setiap tab.
         tab.addEventListener('click', () => navigateTo(tab.dataset.tab));
       });
-      
+
       // Event listener untuk menutup popup waktu penuh
       document.getElementById('close-full-schedule-popup').addEventListener('click', () => {
         document.getElementById('full-schedule-popup').classList.add('hidden');
@@ -900,8 +922,8 @@
      * @param {object} originalFormData - Data dari form reservasi awal.
      */
     function showDuplicatePatientModal(matches, originalFormData) {
-        // Membuat elemen HTML untuk setiap pasien yang cocok (dengan class tambahan untuk pencarian)
-        const matchesHtml = matches.map((p, index) => `
+      // Membuat elemen HTML untuk setiap pasien yang cocok (dengan class tambahan untuk pencarian)
+      const matchesHtml = matches.map((p, index) => `
             <label for="match-${index}" class="duplicate-patient-item block p-3 border-b border-primary last:border-b-0 hover:bg-pink-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200">
                 <div class="flex items-start">
                     <input type="radio" id="match-${index}" name="selectedPatient" value="${p.RME}" class="mt-1 mr-3 text-pink-500 focus:ring-pink-500">
@@ -916,8 +938,8 @@
             </label>
         `).join('');
 
-        // Modal HTML Struktur baru dengan kolom pencarian
-        const modalHtml = `
+      // Modal HTML Struktur baru dengan kolom pencarian
+      const modalHtml = `
         <div id="duplicate-patient-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity">
             <div class="rounded-xl shadow-2xl w-full max-w-md m-4 bg-card relative overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
                 
@@ -970,69 +992,69 @@
                 </div>
             </div>
         </div>`;
-        
-        document.getElementById('modals-container').innerHTML = modalHtml;
 
-        // --- Logic Pencarian Otomatis ---
-        const searchInput = document.getElementById('duplicate-search-input');
-        const items = document.querySelectorAll('.duplicate-patient-item');
-        const noResult = document.getElementById('no-duplicate-found');
+      document.getElementById('modals-container').innerHTML = modalHtml;
 
-        // Fokus otomatis ke input search saat modal muncul
-        setTimeout(() => searchInput.focus(), 100);
+      // --- Logic Pencarian Otomatis ---
+      const searchInput = document.getElementById('duplicate-search-input');
+      const items = document.querySelectorAll('.duplicate-patient-item');
+      const noResult = document.getElementById('no-duplicate-found');
 
-        searchInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            let visibleCount = 0;
+      // Fokus otomatis ke input search saat modal muncul
+      setTimeout(() => searchInput.focus(), 100);
 
-            items.forEach(item => {
-                const name = item.querySelector('.patient-name').textContent.toLowerCase();
-                const rme = item.querySelector('.patient-rme').textContent.toLowerCase();
-                const info = item.querySelector('.patient-info').textContent.toLowerCase();
-                
-                // Cek apakah term ada di nama, rme, atau info (hp/alamat)
-                if (name.includes(term) || rme.includes(term) || info.includes(term)) {
-                    item.style.display = 'block'; 
-                    visibleCount++;
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+      searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        let visibleCount = 0;
 
-            // Tampilkan pesan jika tidak ada hasil
-            if (visibleCount === 0) {
-                noResult.classList.remove('hidden');
-            } else {
-                noResult.classList.add('hidden');
-            }
+        items.forEach(item => {
+          const name = item.querySelector('.patient-name').textContent.toLowerCase();
+          const rme = item.querySelector('.patient-rme').textContent.toLowerCase();
+          const info = item.querySelector('.patient-info').textContent.toLowerCase();
+
+          // Cek apakah term ada di nama, rme, atau info (hp/alamat)
+          if (name.includes(term) || rme.includes(term) || info.includes(term)) {
+            item.style.display = 'block';
+            visibleCount++;
+          } else {
+            item.style.display = 'none';
+          }
         });
 
-        // Event Listeners untuk Tombol Aksi (sama seperti sebelumnya)
-        document.getElementById('btn-its-me').addEventListener('click', async () => {
-            const selectedRME = document.querySelector('input[name="selectedPatient"]:checked');
-            if (!selectedRME) {
-            showToast('Silakan pilih salah satu data pasien.', 'warning');
-            return;
-            }
-            originalFormData.existingRME = selectedRME.value;
-            const result = await callBackend('POST', 'newReservation', originalFormData);
-            if (result.status === 'success') {
-            closeModal('reservation-modal');
-            closeModal('duplicate-patient-modal');
-            showToast(`Reservasi untuk pasien lama berhasil!`, 'success');
-            state.selectedItems = []; updateCartFab(); navigateTo('reservations');
-            } else { showToast(`Gagal: ${result.message}`, 'error'); }
-        });
+        // Tampilkan pesan jika tidak ada hasil
+        if (visibleCount === 0) {
+          noResult.classList.remove('hidden');
+        } else {
+          noResult.classList.add('hidden');
+        }
+      });
 
-        document.getElementById('btn-not-me').addEventListener('click', async () => {
-            const result = await callBackend('POST', 'newReservation', originalFormData);
-            if (result.status === 'success') {
-            closeModal('reservation-modal');
-            closeModal('duplicate-patient-modal');
-            showToast(`Reservasi untuk pasien baru berhasil! RME: ${result.data.rme}`, 'success');
-            state.selectedItems = []; updateCartFab(); navigateTo('reservations');
-            } else { showToast(`Gagal: ${result.message}`, 'error'); }
-        });
+      // Event Listeners untuk Tombol Aksi (sama seperti sebelumnya)
+      document.getElementById('btn-its-me').addEventListener('click', async () => {
+        const selectedRME = document.querySelector('input[name="selectedPatient"]:checked');
+        if (!selectedRME) {
+          showToast('Silakan pilih salah satu data pasien.', 'warning');
+          return;
+        }
+        originalFormData.existingRME = selectedRME.value;
+        const result = await callBackend('POST', 'newReservation', originalFormData);
+        if (result.status === 'success') {
+          closeModal('reservation-modal');
+          closeModal('duplicate-patient-modal');
+          showToast(`Reservasi untuk pasien lama berhasil!`, 'success');
+          state.selectedItems = []; updateCartFab(); navigateTo('reservations');
+        } else { showToast(`Gagal: ${result.message}`, 'error'); }
+      });
+
+      document.getElementById('btn-not-me').addEventListener('click', async () => {
+        const result = await callBackend('POST', 'newReservation', originalFormData);
+        if (result.status === 'success') {
+          closeModal('reservation-modal');
+          closeModal('duplicate-patient-modal');
+          showToast(`Reservasi untuk pasien baru berhasil! RME: ${result.data.rme}`, 'success');
+          state.selectedItems = []; updateCartFab(); navigateTo('reservations');
+        } else { showToast(`Gagal: ${result.message}`, 'error'); }
+      });
     }
 
     /**
@@ -1092,16 +1114,16 @@
      */
     async function checkScheduleAvailability(visitDate, visitTime) {
       if (!visitDate || !visitTime) return true;
-      
+
       const result = await callBackend('GET', 'checkScheduleAvailability', {
         visitDate,
         visitTime
       });
-      
+
       if (result.status === 'success') {
         return result.data.available;
       }
-      
+
       return true; // Default to available if there's an error
     }
 
@@ -1475,36 +1497,36 @@
     window.checkForDuplicatePatient = async () => {
       const form = document.getElementById('reservation-form');
       if (!form) return;
-      
+
       const requesterName = form.requesterName.value.trim();
       const patientName = form.patientName.value.trim();
       const phone = form.phone.value.trim();
-      
+
       // Jika tidak ada cukup data untuk dicek, sembunyikan warning
       if ((!requesterName && !patientName) || phone.length < 3) {
         document.getElementById('duplicate-warning').classList.add('hidden');
         state.duplicatePatientCheck.matches = [];
         return;
       }
-      
+
       // Cegah pengecekan terlalu sering
       const now = Date.now();
-      if (state.duplicatePatientCheck.isChecking || 
-          (state.duplicatePatientCheck.lastChecked && 
-           now - state.duplicatePatientCheck.lastChecked < 1000)) {
+      if (state.duplicatePatientCheck.isChecking ||
+        (state.duplicatePatientCheck.lastChecked &&
+          now - state.duplicatePatientCheck.lastChecked < 1000)) {
         return;
       }
-      
+
       state.duplicatePatientCheck.isChecking = true;
       state.duplicatePatientCheck.lastChecked = now;
-      
+
       try {
         const result = await callBackend('GET', 'checkExistingPatient', {
           patientName: patientName,
           requesterName: requesterName,
           phone: phone
         });
-        
+
         if (result.status === 'success' && result.data.length > 0) {
           state.duplicatePatientCheck.matches = result.data;
           document.getElementById('duplicate-warning').classList.remove('hidden');
@@ -1531,12 +1553,12 @@
           window.selectPatientAndFillForm(target.dataset.index);
         }
       });
-      
+
       // PERBAIKAN: Event listener untuk menampilkan popup waktu penuh berdasarkan data REAL
       document.querySelector('select[name="visitTime"]').addEventListener('change', async (e) => {
         const visitDate = document.querySelector('input[name="visitDate"]').value;
         const visitTime = e.target.value;
-        
+
         if (visitDate && visitTime) {
           const isAvailable = await checkScheduleAvailability(visitDate, visitTime);
           if (!isAvailable) {
@@ -1546,47 +1568,47 @@
       });
     }
 
-  const populateTimeOptions = () => {
-  const timeSelect = document.querySelector('select[name="visitTime"]');
-  if (!timeSelect) return;
+    const populateTimeOptions = () => {
+      const timeSelect = document.querySelector('select[name="visitTime"]');
+      if (!timeSelect) return;
 
-  const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
-  timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
-  if (isPartus) return;
+      const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
+      timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
+      if (isPartus) return;
 
-  let startTime = new Date();
-  startTime.setHours(08, 30, 0, 0);
-  let endTime = new Date();
-  endTime.setHours(21, 30, 0, 0);
+      let startTime = new Date();
+      startTime.setHours(8, 30, 0, 0);
+      let endTime = new Date();
+      endTime.setHours(21, 30, 0, 0);
 
-  // --- KONFIGURASI JAM ISTIRAHAT ---
-  const BREAK_START_HOUR = 12; // Mulai istirahat jam 12:00
-  const BREAK_END_HOUR = 13;   // Selesai istirahat jam 13:00
-  // ---------------------------------
+      // --- KONFIGURASI JAM ISTIRAHAT ---
+      const BREAK_START_HOUR = 12; // Mulai istirahat jam 12:00
+      const BREAK_END_HOUR = 13;   // Selesai istirahat jam 13:00
+      // ---------------------------------
 
-  while (startTime <= endTime) {
-    const currentHour = startTime.getHours();
+      while (startTime <= endTime) {
+        const currentHour = startTime.getHours();
 
-    // Cek apakah waktu saat ini masuk dalam jam istirahat
-    // Logika: Jika jam >= 12 DAN jam < 13 maka anggap sebagai waktu istirahat
-    // Ini akan menyembunyikan slot 12:00 dan 13:00
-    const isBreakTime = currentHour >= BREAK_START_HOUR && currentHour < BREAK_END_HOUR;
+        // Cek apakah waktu saat ini masuk dalam jam istirahat
+        // Logika: Jika jam >= 12 DAN jam < 13 maka anggap sebagai waktu istirahat
+        // Ini akan menyembunyikan slot 12:00 dan 13:00
+        const isBreakTime = currentHour >= BREAK_START_HOUR && currentHour < BREAK_END_HOUR;
 
-    if (!isBreakTime) {
-      const timeString = startTime.toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }).replace(/\./g, ':');
-      
-      timeSelect.appendChild(new Option(timeString, timeString));
-    }
+        if (!isBreakTime) {
+          const timeString = startTime.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }).replace(/\./g, ':');
 
-    // Tetap tambahkan 30 menit meskipun sedang istirahat, 
-    // agar loop berlanjut ke jam 15:00
-    startTime.setMinutes(startTime.getMinutes() + 30);
-  }
-  };
-    
+          timeSelect.appendChild(new Option(timeString, timeString));
+        }
+
+        // Tetap tambahkan 30 menit meskipun sedang istirahat, 
+        // agar loop berlanjut ke jam 15:00
+        startTime.setMinutes(startTime.getMinutes() + 30);
+      }
+    };
+
     const updateAgeAndDay = (e) => {
       const dobInput = e.target.value;
       const ageOutput = document.getElementById('age-output');
@@ -2138,13 +2160,13 @@
       if (statusFilter !== 'all') {
         filteredReservations = filteredReservations.filter(res => res.Status === statusFilter);
       }
-      
+
       // Cek jika tidak ada filter yang diterapkan dan tidak ada hasil
       if (!hasDateFilter && statusFilter === 'all') {
-          // Tidak ada filter, tampilkan semua
-          state.rekapFilteredData = null; // Hapus filter
-          renderAllRekapVisuals(state.rekapData); // Render data asli
-          return;
+        // Tidak ada filter, tampilkan semua
+        state.rekapFilteredData = null; // Hapus filter
+        renderAllRekapVisuals(state.rekapData); // Render data asli
+        return;
       }
 
       // Hitung statistik baru dari data yang sudah difilter
@@ -2193,7 +2215,7 @@
       }), {});
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-      
+
       // Inisialisasi jam agar grafik jam konsisten
       for (let i = 0; i < 24; i++) {
         stats.peakHourCounts[i.toString().padStart(2, '0') + ':00'] = 0;
@@ -2227,7 +2249,7 @@
         // Peak Hour Count
         const hourKey = visitDate.getHours().toString().padStart(2, '0') + ':00';
         stats.peakHourCounts[hourKey] = (stats.peakHourCounts[hourKey] || 0) + 1; // Increment
-        
+
         // Month Count
         const monthYearKey = `${months[visitDate.getMonth()]} ${visitDate.getFullYear()}`;
         stats.monthCounts[monthYearKey] = (stats.monthCounts[monthYearKey] || 0) + 1;
@@ -2278,13 +2300,13 @@
       // Hapus canvas lama dan buat yang baru untuk menghindari masalah state
       const oldCanvas = document.getElementById(canvasId);
       if (oldCanvas) oldCanvas.remove();
-      
+
       const newCanvas = document.createElement('canvas');
       newCanvas.id = canvasId;
       ctxContainer.appendChild(newCanvas);
-      
+
       const ctx = newCanvas.getContext('2d');
-      
+
       // Destroy previous chart instance
       if (window.myCharts && window.myCharts[canvasId]) {
         window.myCharts[canvasId].destroy();
@@ -2624,4 +2646,5 @@
     });
   </script>
 </body>
+
 </html>
