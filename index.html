@@ -590,9 +590,14 @@
       setLoading(true); // Menampilkan loader global.
       try {
         let url = SCRIPT_URL; // URL dasar backend.
+
+        // Tambahkan timestamp agar URL selalu unik (mencegah cache browser)
+        const cacheBuster = new Date().getTime();
+        
         const options = { // Opsi untuk request 'fetch'.
           method,
           redirect: "follow",
+          cache: "no-store", // KUNCI SOLUSI 1: Paksa browser ambil data terbaru
           headers: {
             'Content-Type': 'text/plain;charset=utf-8'
           }
