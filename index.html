@@ -176,7 +176,8 @@
   </div>
 
   <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_FtGrjkFKgfBoBsNr5QVjNR8j3BbefSQXIz_b7CepMFYDMs6W1Qt9SdmHn_ISNW89/exec'; // TETAPKAN URL ANDA DISINI
+    // MASUKKAN URL DEPLOY GOOGLE APPS SCRIPT ANDA DI SINI
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_FtGrjkFKgfBoBsNr5QVjNR8j3BbefSQXIz_b7CepMFYDMs6W1Qt9SdmHn_ISNW89/exec'; 
 
     let state = {
       activeTab: 'home',
@@ -344,7 +345,7 @@
         const patientsResult = await callBackend('GET', 'getPatients', { query: '' });
         if (patientsResult.status === 'success') state.data.allPatients = patientsResult.data || [];
       }
-      // Fetch Settings if not fetched
+      
       const settingsResult = await callBackend('GET', 'getSettings');
       if (settingsResult.status === 'success' && settingsResult.data) {
           state.data.settings = { ...state.data.settings, ...settingsResult.data };
@@ -359,7 +360,7 @@
       }
     }
 
-    // --- DASHBOARD MINI ESTETIK ---
+    // --- DASHBOARD MINI ESTETIK (PERBAIKAN LOGIKA WAKTU) ---
     function renderMiniDashboard(reservations) {
         const today = new Date();
         const todayStr = today.toDateString();
@@ -373,11 +374,14 @@
                 if (r.Status === 'Selesai') {
                     selesai++;
                 } else if (r.Status === 'Menunggu') {
-                    const jamSplit = r.Jam_Datang.replace('.', ':').split(':');
-                    const resTime = new Date(today);
+                    // PERBAIKAN: Membandingkan secara akurat dengan jam dan menit saat ini
+                    const jamDatang = r.Jam_Datang || '00:00';
+                    const jamSplit = jamDatang.replace('.', ':').split(':');
+                    
+                    const resTime = new Date();
                     resTime.setHours(parseInt(jamSplit[0] || 0), parseInt(jamSplit[1] || 0), 0, 0);
                     
-                    if (resTime < today) {
+                    if (resTime < today) { // today disini adalah new Date() (waktu detik ini juga)
                         lewatWaktu++;
                     } else {
                         belumDatang++;
@@ -419,7 +423,6 @@
     function renderReservationsPage(reservations) {
       const appContent = document.getElementById('app-content');
       
-      // Inject Mini Dashboard
       let htmlContent = renderMiniDashboard(reservations);
 
       if (!reservations || reservations.length === 0) {
@@ -442,7 +445,7 @@
                             <div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${(function(){try { return JSON.parse(res.Items || '[]').join(', '); }catch(e) { return res.Items; } })()}</p></div>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span>
                         </div>
-                        <p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p>
+                        <p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate} | Jam: ${res.Jam_Datang}</p>
                         <div class="mt-3 flex justify-end items-center gap-3 flex-wrap">
                             <button onclick="handlePrintReservation('${res.ID_Reservasi}')" class="text-gray-500 hover:text-pink-500 text-sm font-medium flex items-center gap-1"><i class="fas fa-print fa-fw"></i>Cetak</button>
                             <button onclick="showPatientHistoryModal('${res.RME}')" class="text-purple-500 hover:underline text-sm font-medium">Riwayat</button>
@@ -455,7 +458,7 @@
       appContent.innerHTML = htmlContent;
     }
 
-    // --- MANAJEMEN PAGE TERMASUK PENGATURAN JADWAL ---
+    // --- MANAJEMEN PAGE ---
     function renderManagementPage() {
       const { treatments, products, therapists, settings } = state.data;
       
@@ -494,7 +497,7 @@
             </div>`;
     }
 
-    // Event handler for settings after rendering
+    // Event listener dinamis untuk form manajemen
     document.addEventListener('submit', async (e) => {
         if(e.target && e.target.id === 'settings-form') {
             e.preventDefault();
@@ -510,6 +513,7 @@
         }
     });
 
+    // --- FUNGSI SELESAIKAN RESERVASI ---
     window.showCompleteModal = async (reservationId) => {
       const reservation = state.data.allReservations.find(r => r.ID_Reservasi === reservationId);
       if (!reservation) return showToast('Reservasi tidak ditemukan', 'error');
@@ -545,8 +549,40 @@
                     </div>
                 </div>`;
       document.getElementById('modals-container').innerHTML = modalHtml;
+      
+      // PERBAIKAN: Fungsi penanganan (handleCompleteSubmit) ditambahkan disini
       document.getElementById('complete-form').addEventListener('submit', handleCompleteSubmit);
     };
+
+    // PERBAIKAN: Logika penyimpanan data saat ditekan tombol Simpan (Selesai)
+    const handleCompleteSubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        // Kumpulkan checkbox yang dicentang
+        const updatedItems = Array.from(e.target.querySelectorAll('input[name="updatedItems"]:checked')).map(cb => cb.value);
+        data.updatedItems = updatedItems;
+
+        // Kelompokkan data pemeriksaan
+        data.examData = {
+            suhu: data.temp,
+            berat: data.weight,
+            tinggi: data.height,
+            lila: data.lila,
+            catatan: data.examNotes
+        };
+
+        const result = await callBackend('POST', 'completeReservation', data);
+        if (result.status === 'success') {
+            closeModal('complete-modal');
+            showToast('Reservasi diselesaikan!', 'success');
+            navigateTo('reservations');
+        } else {
+            showToast(`Gagal: ${result.message}`, 'error');
+        }
+    };
+
 
     // --- RESCHEDULE RESERVATION ---
     window.requestRescheduleAction = (reservationId) => {
@@ -565,7 +601,12 @@
       let resDate = "";
       if(reservation.Tanggal_Datang) {
           const d = new Date(reservation.Tanggal_Datang);
-          if(!isNaN(d.getTime())) resDate = d.toISOString().split('T')[0];
+          if(!isNaN(d.getTime())) {
+              // Koreksi Timezone agar tanggal tidak meleset
+              const offset = d.getTimezoneOffset() * 60000;
+              const localDate = new Date(d.getTime() - offset);
+              resDate = localDate.toISOString().split('T')[0];
+          }
       }
 
       const modalHtml = `
