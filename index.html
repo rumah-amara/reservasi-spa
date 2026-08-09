@@ -9,7 +9,7 @@
   <!-- Menentukan set karakter yang digunakan adalah UTF-8, mendukung berbagai macam karakter -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Mengatur viewport agar website responsif di berbagai perangkat -->
-  <title>Reservasi - Klinik Nabilah Pulungan</title>
+  <title>Reservasi - Rumah Amara</title>
   <!-- Judul yang akan tampil di tab browser -->
 
   <!-- Memuat library Tailwind CSS dari CDN untuk styling cepat dan modern -->
@@ -430,7 +430,7 @@
     <div class="petal" style="left: 80%; animation-delay: 5s;"></div>
     <!-- Logo klinik -->
     <div class="logo text-center">
-      <h1 class="text-4xl font-bold" style="color: #FF6B8A;">Klinik Nabilah Pulungan</h1>
+      <h1 class="text-4xl font-bold" style="color: #FF6B8A;">Rumah Amara</h1>
       <p class="text-gray-500 mt-2">Reservasi Online</p>
     </div>
   </div>
@@ -456,6 +456,18 @@
         <span id="cart-count"
           class="absolute -top-1 -right-1 bg-pink-600 text-white text-xs rounded-full px-2 py-1">0</span>
       </button>
+    </div>
+
+    <!-- Watermark Copyright Estetik -->
+    <div
+      class="fixed bottom-[60px] left-0 right-0 z-30 flex justify-center pointer-events-none opacity-70 hover:opacity-100 transition-opacity duration-300">
+      <div
+        class="bg-white/50 backdrop-blur-md border border-white/50 shadow-sm px-4 py-1 rounded-t-xl flex items-center justify-center w-max mx-auto border-b-0">
+        <span class="text-[9px] font-medium text-pink-700/80 uppercase tracking-wider text-center">
+          Didesain oleh <span class="font-bold text-pink-800">Ahmad Ro'pat Tanjung</span> <span
+            class="lowercase italic font-serif">by</span> Shafaqo
+        </span>
+      </div>
     </div>
 
     <!-- Navigasi bawah (bottom navigation bar) -->
@@ -593,7 +605,7 @@
 
         // Tambahkan timestamp agar URL selalu unik (mencegah cache browser)
         const cacheBuster = new Date().getTime();
-        
+
         const options = { // Opsi untuk request 'fetch'.
           method,
           redirect: "follow",
@@ -771,6 +783,93 @@
      */
     function renderReservationsPage(reservations) {
       const appContent = document.getElementById('app-content');
+
+      let dashboardHtml = '';
+      if (reservations && reservations.length > 0) {
+        const todayDateStr = new Date().toDateString();
+        const todayReservations = reservations.filter(r => new Date(r.Tanggal_Datang).toDateString() === todayDateStr);
+
+        // Hitung layanan favorit hari ini
+        let itemsCount = {};
+        todayReservations.forEach(r => {
+          try {
+            let items = JSON.parse(r.Items || '[]');
+            items.forEach(item => itemsCount[item] = (itemsCount[item] || 0) + 1);
+          } catch (e) { }
+        });
+
+        const topItems = Object.entries(itemsCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        const topItemsHtml = topItems.length > 0
+          ? topItems.map((item, i) => {
+            const medals = ['🥇', '🥈', '🥉'];
+            return `<div class="flex items-center gap-2 py-1">
+                    <span class="text-base">${medals[i]}</span>
+                    <span class="text-sm flex-1 truncate">${item[0]}</span>
+                    <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded-full">${item[1]}x</span>
+                </div>`;
+          }).join('')
+          : '<p class="text-xs text-gray-400 py-2">Belum ada data hari ini</p>';
+
+        // Bangun jadwal jam reservasi hari ini berdasarkan status
+        const scheduleItems = todayReservations.map(r => {
+          const d = new Date(r.Tanggal_Datang);
+          const time = !isNaN(d.getTime()) ? d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0') : '??:??';
+          return { time, name: r.Nama_Pasien, status: r.Status, id: r.ID_Reservasi };
+        }).sort((a, b) => a.time.localeCompare(b.time));
+
+        const scheduleHtml = scheduleItems.length > 0
+          ? scheduleItems.map(s => {
+            const isSelesai = s.status === 'Selesai';
+            const bgClass = isSelesai ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
+            const textClass = isSelesai ? 'text-green-700' : 'text-blue-700';
+            const icon = isSelesai ? 'fa-check-circle text-green-500' : 'fa-clock text-blue-500';
+            return `<div class="flex items-center gap-2 p-2 rounded-lg border ${bgClass} dark:bg-opacity-10">
+                    <i class="fas ${icon} text-sm"></i>
+                    <span class="font-mono font-bold text-sm ${textClass}">${s.time}</span>
+                    <span class="text-xs flex-1 truncate">${s.name}</span>
+                    <button onclick="showEditTimeModal('${s.id}')" class="text-gray-400 hover:text-pink-500 transition" title="Edit jam">
+                        <i class="fas fa-pen text-xs"></i>
+                    </button>
+                </div>`;
+          }).join('')
+          : '<p class="text-xs text-gray-400 py-2">Belum ada jadwal hari ini</p>';
+
+        const total = todayReservations.length;
+        const waiting = todayReservations.filter(r => r.Status === 'Menunggu').length;
+        const completed = todayReservations.filter(r => r.Status === 'Selesai').length;
+
+        dashboardHtml = `
+        <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="bg-card p-3 rounded-lg shadow border border-primary text-center">
+                <p class="text-xs text-secondary mb-1">Total Hari Ini</p>
+                <p class="text-xl font-bold">${total}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg shadow border border-primary text-center">
+                <p class="text-xs text-secondary mb-1">Menunggu</p>
+                <p class="text-xl font-bold text-blue-500">${waiting}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg shadow border border-primary text-center">
+                <p class="text-xs text-secondary mb-1">Selesai</p>
+                <p class="text-xl font-bold text-green-500">${completed}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            <div class="bg-card p-3 rounded-lg shadow border border-primary">
+                <p class="text-xs text-secondary mb-2 font-semibold"><i class="fas fa-star text-yellow-400 mr-1"></i>Top 3 Layanan Hari Ini</p>
+                <div>${topItemsHtml}</div>
+            </div>
+            <div class="bg-card p-3 rounded-lg shadow border border-primary">
+                <p class="text-xs text-secondary mb-2 font-semibold"><i class="fas fa-calendar-day text-blue-400 mr-1"></i>Jadwal Hari Ini</p>
+                <div class="space-y-1.5 max-h-40 overflow-y-auto">${scheduleHtml}</div>
+                <div class="flex items-center gap-3 mt-2 pt-2 border-t border-primary">
+                    <span class="flex items-center gap-1 text-[10px] text-green-600"><i class="fas fa-circle text-[6px]"></i> Selesai</span>
+                    <span class="flex items-center gap-1 text-[10px] text-blue-600"><i class="fas fa-circle text-[6px]"></i> Menunggu</span>
+                </div>
+            </div>
+        </div>
+        `;
+      }
+
       if (!reservations || reservations.length === 0) {
         // Tampilkan pesan jika tidak ada data.
         appContent.innerHTML = `<div class="text-center p-8 text-secondary"><i class="fas fa-calendar-times fa-3x mb-3"></i><p>Tidak ada data reservasi.</p></div>`;
@@ -784,13 +883,13 @@
       // Urutkan reservasi dari yang terbaru.
       const sortedReservations = reservations.sort((a, b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang));
       // Buat HTML untuk setiap kartu reservasi menggunakan .map() dan gabungkan dengan .join().
-      appContent.innerHTML = `<div class="space-y-4">${sortedReservations.map(res => {
+      appContent.innerHTML = dashboardHtml + `<div class="space-y-4">${sortedReservations.map(res => {
         const visitDate = new Date(res.Tanggal_Datang);
         // Format tanggal agar mudah dibaca.
         const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Tanggal Invalid';
         return `<div class="p-4 rounded-lg shadow bg-card">
                         <div class="flex justify-between items-start">
-                            <div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${(function(){try { return JSON.parse(res.Items || '[]').join(', '); }catch(e) { return res.Items; } })()}</p></div>
+                            <div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${(function () { try { return JSON.parse(res.Items || '[]').join(', '); } catch (e) { return res.Items; } })()}</p></div>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span>
                         </div>
                         <p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p>
@@ -1442,6 +1541,76 @@
 
     /**
      * =========================================
+     * EDIT RESERVATION TIME MODAL
+     * =========================================
+     */
+    window.showEditTimeModal = (reservationId) => {
+      if (!state.isAuthenticated) {
+        state.pendingAction = () => showEditTimeModal(reservationId);
+        showPasswordModal();
+        return;
+      }
+      const res = state.data.allReservations.find(r => r.ID_Reservasi === reservationId);
+      if (!res) return showToast('Reservasi tidak ditemukan', 'error');
+
+      const currentDate = new Date(res.Tanggal_Datang);
+      // Format datetime-local: YYYY-MM-DDTHH:MM
+      const currentValue = !isNaN(currentDate.getTime())
+        ? currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0') + 'T' + String(currentDate.getHours()).padStart(2, '0') + ':' + String(currentDate.getMinutes()).padStart(2, '0')
+        : '';
+
+      const modalHtml = `
+        <div id="edit-time-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card relative">
+                <button class="modal-close-btn" onclick="closeModal('edit-time-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="p-6">
+                    <h2 class="text-xl font-bold theme-pink mb-1">Edit Jam Reservasi</h2>
+                    <p class="text-sm text-secondary mb-4">${res.Nama_Pasien}</p>
+                    <form id="edit-time-form" class="space-y-4">
+                        <input type="hidden" name="reservationId" value="${reservationId}">
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-1">Tanggal & Jam Kunjungan</label>
+                            <input type="datetime-local" name="newDateTime" value="${currentValue}" class="w-full border-gray-300 rounded-md shadow-sm input-field p-3" required>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" onclick="closeModal('edit-time-modal')" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg text-sm">Batal</button>
+                            <button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg text-sm font-semibold">Simpan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>`;
+      document.getElementById('modals-container').innerHTML = modalHtml;
+      document.getElementById('edit-time-form').addEventListener('submit', handleEditTimeSubmit);
+    };
+
+    const handleEditTimeSubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const reservationId = formData.get('reservationId');
+      const newDateTime = formData.get('newDateTime');
+
+      if (!newDateTime) return showToast('Pilih tanggal dan jam baru.', 'error');
+
+      const result = await callBackend('POST', 'updateReservationTime', {
+        reservationId: reservationId,
+        newDateTime: new Date(newDateTime).toISOString()
+      });
+
+      if (result.status === 'success') {
+        closeModal('edit-time-modal');
+        showToast('Jam reservasi berhasil diperbarui!', 'success');
+        navigateTo('reservations');
+      } else {
+        showToast(`Gagal: ${result.message}`, 'error');
+      }
+    };
+
+    /**
+     * =========================================
      * RESERVATION FORM MODAL
      * =========================================
      */
@@ -2073,6 +2242,13 @@
                 </div>
             </div>
 
+            <div class="p-4 rounded-lg shadow bg-card mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-lg theme-pink">Dashboard Laporan</h3>
+                </div>
+                <div id="rekap-dashboard-container"></div>
+            </div>
+
             <div class="p-4 rounded-lg shadow bg-card">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="font-bold text-lg theme-pink">Grafik Statistik</h3>
@@ -2274,6 +2450,112 @@
       } = dataToRender;
       // Fallback to full data stats if filtered data is incomplete (e.g., for demographics that should cover all time)
       const allStats = state.rekapData.stats || stats;
+
+      // --- Update Rekap Dashboard ---
+      const rekapDashContainer = document.getElementById('rekap-dashboard-container');
+      if (rekapDashContainer) {
+        const total = rawReservations.length;
+        const waiting = rawReservations.filter(r => r.Status === 'Menunggu').length;
+        const completed = rawReservations.filter(r => r.Status === 'Selesai').length;
+        const uniquePatients = new Set(rawReservations.map(r => r.RME)).size;
+
+        const topTreatments = Object.entries(stats.treatmentNameCounts).sort((a, b) => b[1] - a[1]);
+        const top3Treatments = topTreatments.slice(0, 3);
+        const top3Html = top3Treatments.length > 0
+          ? top3Treatments.map((item, i) => {
+            const medals = ['🥇', '🥈', '🥉'];
+            return `<div class="flex items-center gap-2 py-1">
+                    <span class="text-base">${medals[i]}</span>
+                    <span class="text-sm flex-1 truncate">${item[0]}</span>
+                    <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-0.5 rounded-full">${item[1]}x</span>
+                </div>`;
+          }).join('')
+          : '<p class="text-xs text-gray-400">Tidak ada data</p>';
+
+        const bottom3Treatments = topTreatments.slice(-3).reverse();
+        const bottom3Html = bottom3Treatments.length > 0
+          ? bottom3Treatments.map((item, i) => {
+            return `<div class="flex items-center gap-2 py-1">
+                    <span class="text-sm text-gray-400">${i + 1}.</span>
+                    <span class="text-sm flex-1 truncate text-gray-500">${item[0]}</span>
+                    <span class="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full">${item[1]}x</span>
+                </div>`;
+          }).join('')
+          : '<p class="text-xs text-gray-400">Tidak ada data</p>';
+
+        const daysList = Object.entries(stats.dayCounts).sort((a, b) => b[1] - a[1]);
+        const teramai = daysList.length > 0 ? `${daysList[0][0]} (${daysList[0][1]}x)` : '-';
+        const tersepi = daysList.length > 0 ? `${daysList[daysList.length - 1][0]} (${daysList[daysList.length - 1][1]}x)` : '-';
+
+        const hoursList = Object.entries(stats.peakHourCounts).filter(h => h[1] > 0).sort((a, b) => b[1] - a[1]);
+        const peakHour = hoursList.length > 0 ? `${hoursList[0][0]} (${hoursList[0][1]}x)` : '-';
+        const quietHour = hoursList.length > 0 ? `${hoursList[hoursList.length - 1][0]} (${hoursList[hoursList.length - 1][1]}x)` : '-';
+
+        const therapistList = Object.entries(stats.therapistCounts).sort((a, b) => b[1] - a[1]);
+        const topTherapist = therapistList.length > 0 ? `${therapistList[0][0]} (${therapistList[0][1]}x)` : '-';
+
+        const avgPerDay = Object.keys(stats.dailyTrend).length > 0 ? (total / Object.keys(stats.dailyTrend).length).toFixed(1) : '0';
+
+        rekapDashContainer.innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1">Total Reservasi</p>
+                <p class="text-xl font-bold">${total}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1">Pasien Unik</p>
+                <p class="text-xl font-bold text-purple-500">${uniquePatients}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1">Menunggu</p>
+                <p class="text-xl font-bold text-blue-500">${waiting}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1">Selesai</p>
+                <p class="text-xl font-bold text-green-500">${completed}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1">Rata-rata/Hari</p>
+                <p class="text-lg font-bold text-indigo-500">${avgPerDay}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1">Terapis Terbaik</p>
+                <p class="text-sm font-bold text-teal-600 truncate" title="${topTherapist}">${topTherapist}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1"><i class="fas fa-sun text-yellow-400"></i> Hari Teramai</p>
+                <p class="text-sm font-bold">${teramai}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1"><i class="fas fa-moon text-gray-400"></i> Hari Tersepi</p>
+                <p class="text-sm font-bold text-gray-500">${tersepi}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1"><i class="fas fa-fire text-orange-400"></i> Jam Puncak</p>
+                <p class="text-sm font-bold text-orange-500">${peakHour}</p>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
+                <p class="text-xs text-secondary mb-1"><i class="fas fa-couch text-gray-400"></i> Jam Tersepi</p>
+                <p class="text-sm font-bold text-gray-500">${quietHour}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-card p-3 rounded-lg border border-theme-pink bg-pink-50 dark:bg-opacity-10 shadow-sm">
+                <p class="text-xs text-secondary mb-2 font-semibold"><i class="fas fa-trophy text-yellow-400 mr-1"></i>Top 3 Layanan Terfavorit</p>
+                <div>${top3Html}</div>
+            </div>
+            <div class="bg-card p-3 rounded-lg border border-primary shadow-sm">
+                <p class="text-xs text-secondary mb-2 font-semibold"><i class="fas fa-arrow-down text-gray-400 mr-1"></i>3 Layanan Paling Sedikit</p>
+                <div>${bottom3Html}</div>
+            </div>
+        </div>
+        `;
+      }
+      // ------------------------------
 
       // 1. Charts
       createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend).sort(), Object.keys(stats.dailyTrend).sort().map(key => stats.dailyTrend[key]), 'Grafik Tren Reservasi Harian');
