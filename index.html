@@ -459,7 +459,8 @@
     </div>
 
     <!-- Navigasi bawah (bottom navigation bar) -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-secondary border-primary pb-1 rounded-t-xl">
+    <nav
+      class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-secondary border-primary pb-1 rounded-t-xl">
       <div class="flex justify-around pt-1">
         <!-- Tombol navigasi untuk tab Home -->
         <button data-tab="home" class="nav-tab active-tab flex-1 py-1 px-1 text-center text-secondary">
@@ -489,12 +490,13 @@
           <span class="block text-[10px] mt-0.5">Manajemen</span>
         </button>
       </div>
-      
+
       <!-- Watermark Copyright Terintegrasi -->
       <div class="w-full text-center mt-0.5 pt-1 border-t border-primary/50">
-        <span class="text-[8px] font-medium text-secondary/70 uppercase tracking-widest flex items-center justify-center gap-1">
-          Didesain oleh <span class="font-bold theme-pink">Ahmad Ro'pat Tanjung</span> 
-          <span class="lowercase italic font-serif">by</span> 
+        <span
+          class="text-[8px] font-medium text-secondary/70 uppercase tracking-widest flex items-center justify-center gap-1">
+          Didesain oleh <span class="font-bold theme-pink">Ahmad Ro'pat Tanjung</span>
+          <span class="lowercase italic font-serif">by</span>
           <span class="font-bold theme-pink">Shafaqo</span>
         </span>
       </div>
@@ -555,7 +557,8 @@
         isChecking: false,
         matches: [],
         lastChecked: null
-      }
+      },
+      prefetchedReservations: null // Data reservasi yang di-prefetch di background
     };
 
     // --- 2. FUNGSI-FUNGSI DEFINISI ---
@@ -593,10 +596,11 @@
      * @param {string} method - Metode HTTP ('GET' atau 'POST').
      * @param {string} action - Perintah yang akan dieksekusi di backend.
      * @param {object} payload - Data yang dikirim ke backend.
+     * @param {boolean} silent - Jika true, tidak menampilkan loader global (untuk prefetch background).
      * @returns {Promise<object>} - Hasil dari backend dalam format JSON.
      */
-    async function callBackend(method, action, payload = {}) {
-      setLoading(true); // Menampilkan loader global.
+    async function callBackend(method, action, payload = {}, silent = false) {
+      if (!silent) setLoading(true); // Menampilkan loader global hanya jika bukan silent.
       try {
         let url = SCRIPT_URL; // URL dasar backend.
 
@@ -628,13 +632,13 @@
         return await response.json(); // Mengembalikan response sebagai JSON.
       } catch (error) {
         console.error('Error calling backend:', error); // Mencatat error di console.
-        showToast('Terjadi kesalahan koneksi ke server.', 'error'); // Menampilkan pesan error ke user.
+        if (!silent) showToast('Terjadi kesalahan koneksi ke server.', 'error'); // Menampilkan pesan error ke user.
         return {
           status: 'error',
           message: 'Terjadi kesalahan koneksi.'
         }; // Mengembalikan objek error.
       } finally {
-        setLoading(false); // Menyembunyikan loader global setelah selesai.
+        if (!silent) setLoading(false); // Menyembunyikan loader global setelah selesai.
       }
     }
 
@@ -698,11 +702,29 @@
           appContent.innerHTML = renderHomePage();
           setupHomeEventListeners();
           renderTreatments(state.data.treatments);
+          // Prefetch data reservasi di background agar tab Reservasi bisa dibuka lebih cepat
+          if (!state.prefetchedReservations) {
+            callBackend('GET', 'getReservationsAndNotifications', {}, true).then(result => {
+              if (result.status === 'success') {
+                state.prefetchedReservations = result;
+                // Update badge notifikasi dari data prefetched
+                state.newReservationCount = result.data.newReservationCount || 0;
+                updateNotificationBadge();
+              }
+            });
+          }
           break;
         case 'reservations':
           // Render halaman daftar reservasi.
           header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Daftar Reservasi</h1><p class="text-secondary">Kelola status reservasi pasien</p>${themeButton}`;
-          const resResult = await callBackend('GET', 'getReservationsAndNotifications');
+          // Gunakan data prefetched jika tersedia, jika tidak fetch ulang
+          let resResult;
+          if (state.prefetchedReservations) {
+            resResult = state.prefetchedReservations;
+            state.prefetchedReservations = null; // Hapus cache setelah digunakan agar data selalu fresh di kunjungan berikutnya
+          } else {
+            resResult = await callBackend('GET', 'getReservationsAndNotifications');
+          }
           if (resResult.status === 'success') {
             state.data.allReservations = resResult.data.reservations || [];
             state.newReservationCount = resResult.data.newReservationCount || 0;
@@ -743,22 +765,37 @@
 
     /**
      * Mengambil data dari backend jika data tersebut belum ada di state.
+     * Menggunakan Promise.all untuk fetch paralel — lebih cepat daripada sequential.
      */
     async function fetchDataIfNeeded() {
+      const promises = [];
+
       // Jika data treatment atau produk kosong.
-      if (state.data.treatments.length === 0 || state.data.products.length === 0) {
-        const itemsResult = await callBackend('GET', 'getItems');
-        if (itemsResult.status === 'success') {
-          state.data.treatments = itemsResult.data.treatments || [];
-          state.data.products = itemsResult.data.products || [];
-        }
+      const needItems = state.data.treatments.length === 0 || state.data.products.length === 0;
+      if (needItems) {
+        promises.push(
+          callBackend('GET', 'getItems').then(result => {
+            if (result.status === 'success') {
+              state.data.treatments = result.data.treatments || [];
+              state.data.products = result.data.products || [];
+            }
+          })
+        );
       }
+
       // Jika data pasien kosong.
-      if (state.data.allPatients.length === 0) {
-        const patientsResult = await callBackend('GET', 'getPatients', {
-          query: ''
-        });
-        if (patientsResult.status === 'success') state.data.allPatients = patientsResult.data || [];
+      const needPatients = state.data.allPatients.length === 0;
+      if (needPatients) {
+        promises.push(
+          callBackend('GET', 'getPatients', { query: '' }).then(result => {
+            if (result.status === 'success') state.data.allPatients = result.data || [];
+          })
+        );
+      }
+
+      // Jalankan semua fetch secara paralel
+      if (promises.length > 0) {
+        await Promise.all(promises);
       }
     }
 
@@ -811,7 +848,7 @@
         const scheduleItems = todayReservations.map(r => {
           const d = new Date(r.Tanggal_Datang);
           const time = !isNaN(d.getTime()) ? d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0') : '??:??';
-          return { time, name: r.Nama_Pasien, status: r.Status, id: r.ID_Reservasi };
+          return { time, name: r.Nama_Pasien, status: r.Status, id: r.ID_Reservasi, rme: r.RME };
         }).sort((a, b) => a.time.localeCompare(b.time));
 
         const scheduleHtml = scheduleItems.length > 0
@@ -820,13 +857,26 @@
             const bgClass = isSelesai ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
             const textClass = isSelesai ? 'text-green-700' : 'text-blue-700';
             const icon = isSelesai ? 'fa-check-circle text-green-500' : 'fa-clock text-blue-500';
-            return `<div class="flex items-center gap-2 p-2 rounded-lg border ${bgClass} dark:bg-opacity-10">
-                    <i class="fas ${icon} text-sm"></i>
-                    <span class="font-mono font-bold text-sm ${textClass}">${s.time}</span>
-                    <span class="text-xs flex-1 truncate">${s.name}</span>
-                    <button onclick="showEditTimeModal('${s.id}')" class="text-gray-400 hover:text-pink-500 transition" title="Edit jam">
-                        <i class="fas fa-pen text-xs"></i>
-                    </button>
+
+            const pRes = state.data.allReservations.filter(r => r.RME === s.rme);
+            pRes.sort((a, b) => new Date(a.Tanggal_Datang) - new Date(b.Tanggal_Datang));
+            const isFirst = pRes.length > 0 && pRes[0].ID_Reservasi === s.id;
+            const typeBadge = isFirst
+              ? '<div class="flex items-center justify-center w-5 h-5 rounded-full bg-teal-100 text-teal-600 shrink-0 shadow-sm" title="Pasien Baru"><i class="fas fa-user-plus text-[9px]"></i></div>'
+              : '<div class="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 shrink-0 shadow-sm" title="Pasien Lama"><i class="fas fa-user-check text-[9px]"></i></div>';
+
+            return `<div class="p-2.5 rounded-lg border ${bgClass} dark:bg-opacity-10 transition-colors">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fas ${icon} text-sm shrink-0"></i>
+                            <span class="font-mono font-bold text-sm ${textClass}">${s.time}</span>
+                            ${typeBadge}
+                        </div>
+                        <button onclick="showEditTimeModal('${s.id}')" class="text-gray-400 hover:text-pink-500 transition shrink-0 p-1 rounded-full hover:bg-white dark:hover:bg-gray-700" title="Edit jam">
+                            <i class="fas fa-pen text-xs"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs font-medium mt-1 ml-6">${s.name}</p>
                 </div>`;
           }).join('')
           : '<p class="text-xs text-gray-400 py-2">Belum ada jadwal hari ini</p>';
@@ -858,9 +908,15 @@
             <div class="bg-card p-3 rounded-lg shadow border border-primary">
                 <p class="text-xs text-secondary mb-2 font-semibold"><i class="fas fa-calendar-day text-blue-400 mr-1"></i>Jadwal Hari Ini</p>
                 <div class="space-y-1.5 max-h-40 overflow-y-auto">${scheduleHtml}</div>
-                <div class="flex items-center gap-3 mt-2 pt-2 border-t border-primary">
-                    <span class="flex items-center gap-1 text-[10px] text-green-600"><i class="fas fa-circle text-[6px]"></i> Selesai</span>
-                    <span class="flex items-center gap-1 text-[10px] text-blue-600"><i class="fas fa-circle text-[6px]"></i> Menunggu</span>
+                <div class="flex flex-col gap-1 mt-2 pt-2 border-t border-primary">
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center gap-1 text-[10px] text-green-600"><i class="fas fa-circle text-[6px]"></i> Selesai</span>
+                        <span class="flex items-center gap-1 text-[10px] text-blue-600"><i class="fas fa-circle text-[6px]"></i> Menunggu</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center gap-1 text-[10px] text-teal-600"><i class="fas fa-user-plus text-[10px]"></i> Pasien Baru</span>
+                        <span class="flex items-center gap-1 text-[10px] text-indigo-600"><i class="fas fa-user-check text-[10px]"></i> Pasien Lama</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -884,10 +940,25 @@
         const visitDate = new Date(res.Tanggal_Datang);
         // Format tanggal agar mudah dibaca.
         const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Tanggal Invalid';
-        return `<div class="p-4 rounded-lg shadow bg-card">
-                        <div class="flex justify-between items-start">
-                            <div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${(function () { try { return JSON.parse(res.Items || '[]').join(', '); } catch (e) { return res.Items; } })()}</p></div>
-                            <span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span>
+
+        const patientReservations = state.data.allReservations.filter(r => r.RME === res.RME);
+        patientReservations.sort((a, b) => new Date(a.Tanggal_Datang) - new Date(b.Tanggal_Datang));
+        const isFirstVisit = patientReservations.length > 0 && patientReservations[0].ID_Reservasi === res.ID_Reservasi;
+        const patientTypeBadge = isFirstVisit
+          ? '<span class="bg-teal-100 text-teal-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border border-teal-200 shadow-sm"><i class="fas fa-user-plus text-[8px]"></i> Baru</span>'
+          : '<span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border border-indigo-200 shadow-sm"><i class="fas fa-user-check text-[8px]"></i> Lama</span>';
+
+        return `<div class="p-4 rounded-xl shadow-sm border border-primary bg-card hover:shadow-md transition-all duration-200">
+                        <div class="flex justify-between items-start gap-3">
+                            <div class="flex-1">
+                                <div class="flex flex-wrap items-center gap-2 mb-1">
+                                    <p class="font-bold text-base leading-tight">${res.Nama_Pasien}</p>
+                                    ${patientTypeBadge}
+                                </div>
+                                <p class="text-xs font-mono text-secondary mb-2 bg-gray-100 dark:bg-gray-700 inline-block px-1.5 py-0.5 rounded">RME: ${res.RME}</p>
+                                <p class="text-sm text-secondary flex items-start gap-1.5"><i class="fas fa-stethoscope mt-1 text-pink-400"></i> <span class="flex-1">${(function () { try { return JSON.parse(res.Items || '[]').join(', '); } catch (e) { return res.Items; } })()}</span></p>
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full border shrink-0 shadow-sm ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span>
                         </div>
                         <p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p>
                         <div class="mt-3 flex justify-end items-center gap-4">
@@ -1750,7 +1821,7 @@
       // =====================================================================
       // 👇👇👇 PENGATURAN WAKTU RESERVASI (SILAKAN UBAH DI SINI) 👇👇👇
       // =====================================================================
-      
+
       // 1. MENGATUR RENTANG JAM OPERASIONAL
       const JAM_BUKA = 8;        // Buka jam 08:00
       const MENIT_BUKA = 30;     // Menit buka (08:30)
@@ -1759,13 +1830,13 @@
 
       // 2. MENGATUR RENTANG/DURASI ANTAR SLOT (dalam menit)
       // Ubah angka 30 menjadi 60 untuk interval 1 jam, atau 15 untuk 15 menit.
-      const INTERVAL_MENIT = 30; 
-      
+      const INTERVAL_MENIT = 30;
+
       // 3. MENGATUR RENTANG & JUMLAH SLOT ISTIRAHAT
       // Jika ingin menambah jam istirahat, Anda bisa menambahkan kondisi di bawah.
       const ISTIRAHAT_1_MULAI = 12; // Mulai istirahat pertama jam 12:00
       const ISTIRAHAT_1_SELESAI = 13; // Selesai istirahat pertama jam 13:00
-      
+
       // Contoh jika ada istirahat kedua (misal Ashar):
       // const ISTIRAHAT_2_MULAI = 15;
       // const ISTIRAHAT_2_SELESAI = 16;
@@ -1791,7 +1862,7 @@
         // Cek apakah waktu saat ini masuk dalam jam istirahat
         // Logika: Menyembunyikan slot waktu yang berada di antara jam istirahat
         let isBreakTime = false;
-        
+
         // Cek istirahat 1
         if (currentHour >= ISTIRAHAT_1_MULAI && currentHour < ISTIRAHAT_1_SELESAI) {
           isBreakTime = true;
@@ -2268,9 +2339,10 @@
                             <option value="Menunggu">Menunggu</option>
                         </select>
                     </div>
-                    <div class="sm:col-span-2 flex justify-end gap-3">
+                    <div class="sm:col-span-2 flex flex-wrap justify-end gap-3">
                         <button id="reset-filter-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg text-sm font-medium">Reset</button>
                         <button id="apply-filter-btn" class="px-4 py-2 bg-theme-pink text-white rounded-lg text-sm font-medium">Filter</button>
+                        <button onclick="printFullReport()" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2"><i class="fas fa-file-pdf"></i> Cetak Laporan Lengkap</button>
                     </div>
                 </div>
             </div>
@@ -2554,7 +2626,7 @@
                 <p class="text-lg font-bold text-indigo-500">${avgPerDay}</p>
             </div>
             <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
-                <p class="text-xs text-secondary mb-1">Terapis Terbaik</p>
+                <p class="text-xs text-secondary mb-1">Terapis Terbanyak</p>
                 <p class="text-sm font-bold text-teal-600 truncate" title="${topTherapist}">${topTherapist}</p>
             </div>
             <div class="bg-card p-3 rounded-lg border border-primary text-center shadow-sm">
@@ -2906,6 +2978,508 @@
       } finally {
         setLoading(false);
       }
+    }
+
+    /**
+     * =========================================
+     * CETAK LAPORAN LENGKAP A4 (MULTI-HALAMAN)
+     * =========================================
+     * Menghasilkan PDF A4 estetik berisi:
+     * 1. Cover Page
+     * 2. Dashboard Summary
+     * 3. Semua Grafik (dirender ulang ke canvas tersembunyi)
+     * 4. Tabel Rekap Data
+     */
+    async function printFullReport() {
+      const { jsPDF } = window.jspdf || {};
+      if (!jsPDF) {
+        showToast('Library jsPDF tidak dimuat.', 'error');
+        return;
+      }
+
+      const dataToRender = state.rekapFilteredData || state.rekapData;
+      if (!dataToRender || !dataToRender.rawReservations) {
+        showToast('Data laporan belum tersedia.', 'warning');
+        return;
+      }
+
+      showToast('Mempersiapkan Laporan Lengkap PDF...', 'info');
+      setLoading(true);
+
+      try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageW = pdf.internal.pageSize.getWidth();   // 210mm
+        const pageH = pdf.internal.pageSize.getHeight();  // 297mm
+        const margin = 15;
+        const contentW = pageW - margin * 2;
+
+        // Warna brand
+        const brandPink = [255, 107, 138];   // #FF6B8A
+        const brandPinkLight = [255, 240, 245]; // #FFF0F5
+        const darkGray = [31, 41, 55];       // #1F2937
+        const medGray = [107, 114, 128];     // #6B7280
+        const lightGray = [229, 231, 235];   // #E5E7EB
+
+        // Ambil rentang waktu dari filter
+        const startDateEl = document.getElementById('filter-start-date');
+        const endDateEl = document.getElementById('filter-end-date');
+        const startDateStr = startDateEl && startDateEl.value ? new Date(startDateEl.value).toLocaleDateString('id-ID', { dateStyle: 'long' }) : '';
+        const endDateStr = endDateEl && endDateEl.value ? new Date(endDateEl.value).toLocaleDateString('id-ID', { dateStyle: 'long' }) : '';
+        const rentangWaktu = (startDateStr && endDateStr) ? `${startDateStr} — ${endDateStr}` : 'Semua Waktu';
+
+        // ============================================================
+        // HALAMAN 1: COVER PAGE
+        // ============================================================
+        // Background dekoratif atas
+        pdf.setFillColor(...brandPink);
+        pdf.rect(0, 0, pageW, 90, 'F');
+
+        // Aksen dekoratif
+        pdf.setFillColor(255, 140, 170);
+        pdf.circle(30, 20, 40, 'F');
+        pdf.circle(190, 70, 30, 'F');
+        pdf.setFillColor(255, 180, 200);
+        pdf.circle(170, 15, 15, 'F');
+
+        // Judul utama
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(32);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Rumah Amara', pageW / 2, 40, { align: 'center' });
+
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('Laporan Statistik & Analisis Data', pageW / 2, 52, { align: 'center' });
+
+        // Garis dekoratif
+        pdf.setDrawColor(255, 255, 255);
+        pdf.setLineWidth(0.5);
+        pdf.line(pageW / 2 - 40, 58, pageW / 2 + 40, 58);
+
+        pdf.setFontSize(11);
+        pdf.text(`Periode: ${rentangWaktu}`, pageW / 2, 68, { align: 'center' });
+
+        // Kotak info di bawah cover
+        const boxY = 110;
+        pdf.setFillColor(...brandPinkLight);
+        pdf.roundedRect(margin, boxY, contentW, 45, 5, 5, 'F');
+        pdf.setDrawColor(...brandPink);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(margin, boxY, contentW, 45, 5, 5, 'S');
+
+        pdf.setTextColor(...darkGray);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Informasi Laporan', margin + 10, boxY + 12);
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(...medGray);
+        pdf.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`, margin + 10, boxY + 22);
+        pdf.text(`Waktu Cetak: ${new Date().toLocaleTimeString('id-ID')}`, margin + 10, boxY + 30);
+        pdf.text(`Jumlah Data Reservasi: ${dataToRender.rawReservations.length} reservasi`, margin + 10, boxY + 38);
+
+        // Footer di cover
+        pdf.setFontSize(8);
+        pdf.setTextColor(...medGray);
+        pdf.text('Dokumen ini digenerate otomatis oleh Sistem Reservasi Online Rumah Amara', pageW / 2, pageH - 15, { align: 'center' });
+        pdf.text('Didesain oleh Ahmad Ro\'pat Tanjung by Shafaqo', pageW / 2, pageH - 10, { align: 'center' });
+
+        // ============================================================
+        // HALAMAN 2: DASHBOARD SUMMARY
+        // ============================================================
+        pdf.addPage();
+        let yPos = margin;
+
+        // Header halaman
+        pdf.setFillColor(...brandPink);
+        pdf.rect(0, 0, pageW, 12, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Laporan Statistik Rumah Amara', pageW / 2, 8, { align: 'center' });
+        yPos = 22;
+
+        pdf.setTextColor(...darkGray);
+        pdf.setFontSize(18);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Dashboard Ringkasan', margin, yPos);
+        yPos += 3;
+        pdf.setDrawColor(...brandPink);
+        pdf.setLineWidth(1);
+        pdf.line(margin, yPos, margin + 60, yPos);
+        yPos += 10;
+
+        // Hitung statistik
+        const { stats, rawReservations } = dataToRender;
+        const allStats = state.rekapData.stats || stats;
+        const total = rawReservations.length;
+        const waiting = rawReservations.filter(r => r.Status === 'Menunggu').length;
+        const completed = rawReservations.filter(r => r.Status === 'Selesai').length;
+        const uniquePatients = new Set(rawReservations.map(r => r.RME)).size;
+        const avgPerDay = Object.keys(stats.dailyTrend).length > 0 ? (total / Object.keys(stats.dailyTrend).length).toFixed(1) : '0';
+
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const daysList = Object.entries(stats.dayCounts).sort((a, b) => b[1] - a[1]);
+        const hoursList = Object.entries(stats.peakHourCounts).filter(h => h[1] > 0).sort((a, b) => b[1] - a[1]);
+        const therapistList = Object.entries(stats.therapistCounts).sort((a, b) => b[1] - a[1]);
+        const topTreatments = Object.entries(stats.treatmentNameCounts).sort((a, b) => b[1] - a[1]);
+
+        // Fungsi helper untuk menggambar stat card
+        function drawStatCard(x, y, w, h, label, value, color) {
+          pdf.setFillColor(255, 255, 255);
+          pdf.roundedRect(x, y, w, h, 3, 3, 'F');
+          pdf.setDrawColor(...lightGray);
+          pdf.setLineWidth(0.3);
+          pdf.roundedRect(x, y, w, h, 3, 3, 'S');
+
+          // Garis aksen atas
+          pdf.setFillColor(...color);
+          pdf.rect(x, y, w, 2, 'F');
+
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(...medGray);
+          pdf.text(label, x + w / 2, y + 12, { align: 'center' });
+
+          pdf.setFontSize(18);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(...darkGray);
+          pdf.text(String(value), x + w / 2, y + 24, { align: 'center' });
+        }
+
+        // Baris pertama: 4 stat cards
+        const cardW = (contentW - 15) / 4;
+        const cardH = 30;
+        drawStatCard(margin, yPos, cardW, cardH, 'Total Reservasi', total, brandPink);
+        drawStatCard(margin + cardW + 5, yPos, cardW, cardH, 'Pasien Unik', uniquePatients, [147, 51, 234]);
+        drawStatCard(margin + (cardW + 5) * 2, yPos, cardW, cardH, 'Menunggu', waiting, [59, 130, 246]);
+        drawStatCard(margin + (cardW + 5) * 3, yPos, cardW, cardH, 'Selesai', completed, [34, 197, 94]);
+        yPos += cardH + 8;
+
+        // Baris kedua: insight cards
+        const halfW = (contentW - 5) / 2;
+        const insightH = 22;
+        drawStatCard(margin, yPos, halfW, insightH, 'Rata-rata Reservasi / Hari', avgPerDay, [99, 102, 241]);
+        drawStatCard(margin + halfW + 5, yPos, halfW, insightH, 'Terapis Terbanyak', therapistList.length > 0 ? therapistList[0][0] : '-', [20, 184, 166]);
+        yPos += insightH + 5;
+        drawStatCard(margin, yPos, halfW, insightH, 'Hari Teramai', daysList.length > 0 ? `${daysList[0][0]} (${daysList[0][1]}x)` : '-', [245, 158, 11]);
+        drawStatCard(margin + halfW + 5, yPos, halfW, insightH, 'Jam Puncak', hoursList.length > 0 ? `${hoursList[0][0]} (${hoursList[0][1]}x)` : '-', [239, 68, 68]);
+        yPos += insightH + 12;
+
+        // Top 5 Layanan Terfavorit
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...darkGray);
+        pdf.text('Top 5 Layanan Terfavorit', margin, yPos);
+        yPos += 3;
+        pdf.setDrawColor(...brandPink);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, yPos, margin + 50, yPos);
+        yPos += 6;
+
+        const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+        topTreatments.slice(0, 5).forEach((item, i) => {
+          pdf.setFillColor(i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 248, i % 2 === 0 ? 255 : 250);
+          pdf.roundedRect(margin, yPos - 4, contentW, 10, 2, 2, 'F');
+
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(...darkGray);
+          pdf.text(`${medals[i]}  ${item[0]}`, margin + 5, yPos + 2);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(...brandPink);
+          pdf.text(`${item[1]}x`, margin + contentW - 5, yPos + 2, { align: 'right' });
+          yPos += 12;
+        });
+
+        // ============================================================
+        // HALAMAN 3+: GRAFIK-GRAFIK
+        // ============================================================
+        // Daftar chart yang akan dicetak
+        const chartConfigs = [
+          { id: 'dailyTrendChart', title: 'Grafik Tren Reservasi Harian', type: 'line', labels: Object.keys(stats.dailyTrend).sort(), data: Object.keys(stats.dailyTrend).sort().map(k => stats.dailyTrend[k]) },
+          { id: 'categoryChart', title: 'Distribusi Kategori Treatment', type: 'doughnut', labels: Object.keys(stats.categoryCounts), data: Object.values(stats.categoryCounts) },
+          { id: 'treatmentNameChart', title: 'Treatment Terpopuler', type: 'bar', labels: Object.keys(stats.treatmentNameCounts), data: Object.values(stats.treatmentNameCounts) },
+          { id: 'genderChart', title: 'Distribusi Jenis Kelamin', type: 'pie', labels: Object.keys(stats.genderCounts), data: Object.values(stats.genderCounts) },
+          { id: 'dayChart', title: 'Hari Kunjungan Teramai', type: 'bar', labels: Object.keys(stats.dayCounts), data: Object.values(stats.dayCounts) },
+          { id: 'hourChart', title: 'Jam Kunjungan Puncak', type: 'line', labels: Object.keys(stats.peakHourCounts).sort(), data: Object.keys(stats.peakHourCounts).sort().map(k => stats.peakHourCounts[k]) },
+          { id: 'monthChart', title: 'Bulan Kunjungan Teramai', type: 'bar', labels: Object.keys(stats.monthCounts), data: Object.values(stats.monthCounts) },
+          { id: 'therapistChart', title: 'Kinerja Terapis/Bidan', type: 'doughnut', labels: Object.keys(stats.therapistCounts), data: Object.values(stats.therapistCounts) },
+          { id: 'ageChart', title: 'Demografi Usia Pasien', type: 'bar', labels: Object.keys(allStats.ageDemographics || {}), data: Object.values(allStats.ageDemographics || {}) },
+          { id: 'addressChart', title: 'Domisili Pasien Teratas', type: 'bar', labels: Object.keys(allStats.addressDemographics || {}), data: Object.values(allStats.addressDemographics || {}) },
+        ];
+
+        const vibrantColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8D6E63', '#F48FB1', '#81D4FA', '#FFF59D', '#A5D6A7'];
+
+        // Render chart 2 per halaman
+        for (let i = 0; i < chartConfigs.length; i += 2) {
+          pdf.addPage();
+
+          // Header halaman
+          pdf.setFillColor(...brandPink);
+          pdf.rect(0, 0, pageW, 12, 'F');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Laporan Statistik Rumah Amara — Grafik', pageW / 2, 8, { align: 'center' });
+
+          // Footer
+          pdf.setFontSize(8);
+          pdf.setTextColor(...medGray);
+          pdf.text(`Halaman ${pdf.getNumberOfPages()}`, pageW / 2, pageH - 8, { align: 'center' });
+
+          // Chart 1 (atas)
+          const chart1 = chartConfigs[i];
+          if (chart1 && chart1.data && chart1.data.length > 0 && !chart1.data.every(v => v === 0)) {
+            await renderChartToPdf(pdf, chart1, margin, 20, contentW, 125, vibrantColors);
+          } else if (chart1) {
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(...darkGray);
+            pdf.text(chart1.title, margin, 30);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(...medGray);
+            pdf.text('(Tidak ada data untuk grafik ini)', margin, 42);
+          }
+
+          // Chart 2 (bawah)
+          if (i + 1 < chartConfigs.length) {
+            const chart2 = chartConfigs[i + 1];
+            if (chart2 && chart2.data && chart2.data.length > 0 && !chart2.data.every(v => v === 0)) {
+              await renderChartToPdf(pdf, chart2, margin, 155, contentW, 125, vibrantColors);
+            } else if (chart2) {
+              pdf.setFontSize(12);
+              pdf.setFont('helvetica', 'bold');
+              pdf.setTextColor(...darkGray);
+              pdf.text(chart2.title, margin, 165);
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'normal');
+              pdf.setTextColor(...medGray);
+              pdf.text('(Tidak ada data untuk grafik ini)', margin, 177);
+            }
+          }
+        }
+
+        // ============================================================
+        // HALAMAN TERAKHIR: TABEL DATA
+        // ============================================================
+        pdf.addPage();
+
+        // Header halaman
+        pdf.setFillColor(...brandPink);
+        pdf.rect(0, 0, pageW, 12, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Laporan Statistik Rumah Amara — Tabel Data', pageW / 2, 8, { align: 'center' });
+
+        yPos = 22;
+        pdf.setTextColor(...darkGray);
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Rekap Tabel Reservasi', margin, yPos);
+        yPos += 3;
+        pdf.setDrawColor(...brandPink);
+        pdf.setLineWidth(1);
+        pdf.line(margin, yPos, margin + 55, yPos);
+        yPos += 8;
+
+        // Table header
+        const colWidths = [25, 55, 70, 30]; // Tgl, Pasien, Items, Status
+        pdf.setFillColor(...brandPink);
+        pdf.rect(margin, yPos, contentW, 8, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+
+        let colX = margin + 2;
+        ['Tgl Datang', 'Pasien', 'Items/Layanan', 'Status'].forEach((header, idx) => {
+          pdf.text(header, colX, yPos + 5.5);
+          colX += colWidths[idx];
+        });
+        yPos += 8;
+
+        // Table rows
+        const sortedRes = [...rawReservations].sort((a, b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang));
+        pdf.setFontSize(7);
+
+        sortedRes.forEach((res, idx) => {
+          // Cek apakah perlu halaman baru
+          if (yPos > pageH - 20) {
+            pdf.addPage();
+            // Header halaman baru
+            pdf.setFillColor(...brandPink);
+            pdf.rect(0, 0, pageW, 12, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Laporan Statistik Rumah Amara — Tabel Data (Lanjutan)', pageW / 2, 8, { align: 'center' });
+            yPos = 18;
+
+            // Ulang header tabel
+            pdf.setFillColor(...brandPink);
+            pdf.rect(margin, yPos, contentW, 8, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            let cx = margin + 2;
+            ['Tgl Datang', 'Pasien', 'Items/Layanan', 'Status'].forEach((h, i) => {
+              pdf.text(h, cx, yPos + 5.5);
+              cx += colWidths[i];
+            });
+            yPos += 8;
+            pdf.setFontSize(7);
+          }
+
+          // Zebra striping
+          pdf.setFillColor(idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 252);
+          pdf.rect(margin, yPos, contentW, 7, 'F');
+
+          const d = new Date(res.Tanggal_Datang);
+          const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID');
+          let items = '';
+          try { items = JSON.parse(res.Items || '[]').join(', '); } catch (e) { items = res.Items || ''; }
+
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(...darkGray);
+          colX = margin + 2;
+          pdf.text(dateStr, colX, yPos + 4.5);
+          colX += colWidths[0];
+          pdf.text((res.Nama_Pasien || '').substring(0, 28), colX, yPos + 4.5);
+          colX += colWidths[1];
+          pdf.text(items.substring(0, 40), colX, yPos + 4.5);
+          colX += colWidths[2];
+
+          // Status badge
+          if (res.Status === 'Selesai') {
+            pdf.setTextColor(34, 197, 94);
+          } else {
+            pdf.setTextColor(59, 130, 246);
+          }
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(res.Status || '', colX, yPos + 4.5);
+
+          yPos += 7;
+        });
+
+        // Garis penutup tabel
+        pdf.setDrawColor(...lightGray);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yPos, margin + contentW, yPos);
+        yPos += 5;
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...medGray);
+        pdf.text(`Total: ${sortedRes.length} reservasi`, margin, yPos);
+
+        // Footer halaman terakhir
+        pdf.setFontSize(8);
+        pdf.setTextColor(...medGray);
+        pdf.text(`Halaman ${pdf.getNumberOfPages()}`, pageW / 2, pageH - 8, { align: 'center' });
+
+        // ============================================================
+        // SIMPAN PDF
+        // ============================================================
+        const fileName = `Laporan-Rumah-Amara-${rentangWaktu.replace(/\s/g, '_').replace(/—/g, '-')}.pdf`;
+        pdf.save(fileName);
+        showToast('Laporan Lengkap PDF berhasil dibuat!', 'success');
+
+      } catch (error) {
+        console.error('Full report PDF generation error:', error);
+        showToast('Gagal membuat Laporan PDF. Cek console untuk detail.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    /**
+     * Helper: Render satu chart ke dalam PDF menggunakan canvas tersembunyi
+     */
+    async function renderChartToPdf(pdf, chartConfig, x, y, w, h, colors) {
+      return new Promise((resolve) => {
+        // Buat container tersembunyi
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:800px;height:500px;';
+        document.body.appendChild(container);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 500;
+        container.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+
+        const chart = new Chart(ctx, {
+          type: chartConfig.type,
+          data: {
+            labels: chartConfig.labels,
+            datasets: [{
+              label: 'Jumlah',
+              data: chartConfig.data,
+              backgroundColor: colors,
+              borderColor: '#ffffff',
+              borderWidth: (chartConfig.type === 'pie' || chartConfig.type === 'doughnut') ? 2 : 1,
+              fill: chartConfig.type === 'line'
+            }]
+          },
+          options: {
+            indexAxis: chartConfig.type === 'bar' && chartConfig.labels.length > 8 ? 'y' : 'x',
+            responsive: false,
+            animation: false,
+            plugins: {
+              legend: {
+                display: ['pie', 'doughnut'].includes(chartConfig.type),
+                labels: { color: '#111827', font: { size: 12 } }
+              },
+              title: {
+                display: true,
+                text: chartConfig.title,
+                color: '#111827',
+                font: { size: 16, weight: 'bold' }
+              }
+            },
+            scales: {
+              y: {
+                display: chartConfig.type !== 'pie' && chartConfig.type !== 'doughnut',
+                ticks: { color: '#111827' },
+                grid: { color: 'rgba(0,0,0,0.08)' },
+                beginAtZero: true
+              },
+              x: {
+                display: chartConfig.type !== 'pie' && chartConfig.type !== 'doughnut',
+                ticks: { color: '#111827' },
+                grid: { color: 'rgba(0,0,0,0.08)' }
+              }
+            }
+          },
+          plugins: [{
+            id: 'customBg',
+            beforeDraw: (ch) => {
+              const ctxBg = ch.canvas.getContext('2d');
+              ctxBg.save();
+              ctxBg.globalCompositeOperation = 'destination-over';
+              ctxBg.fillStyle = '#ffffff';
+              ctxBg.fillRect(0, 0, ch.canvas.width, ch.canvas.height);
+              ctxBg.restore();
+            }
+          }]
+        });
+
+        // Tunggu Chart.js selesai render, lalu convert ke image
+        setTimeout(() => {
+          try {
+            const imgData = canvas.toDataURL('image/png');
+            pdf.addImage(imgData, 'PNG', x, y, w, h);
+          } catch (e) {
+            console.warn('Failed to render chart to PDF:', chartConfig.title, e);
+          }
+          chart.destroy();
+          container.remove();
+          resolve();
+        }, 200);
+      });
     }
 
     window.handlePrintReservation = async (reservationId) => {
