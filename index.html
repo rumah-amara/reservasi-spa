@@ -458,48 +458,45 @@
       </button>
     </div>
 
-    <!-- Watermark Copyright Estetik -->
-    <div
-      class="fixed bottom-[60px] left-0 right-0 z-30 flex justify-center pointer-events-none opacity-70 hover:opacity-100 transition-opacity duration-300">
-      <div
-        class="bg-white/50 backdrop-blur-md border border-white/50 shadow-sm px-4 py-1 rounded-t-xl flex items-center justify-center w-max mx-auto border-b-0">
-        <span class="text-[9px] font-medium text-pink-700/80 uppercase tracking-wider text-center">
-          Didesain oleh <span class="font-bold text-pink-800">Ahmad Ro'pat Tanjung</span> <span
-            class="lowercase italic font-serif">by</span> Shafaqo
-        </span>
-      </div>
-    </div>
-
     <!-- Navigasi bawah (bottom navigation bar) -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto border-t shadow-md bg-secondary border-primary">
-      <div class="flex justify-around">
+    <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-secondary border-primary pb-1 rounded-t-xl">
+      <div class="flex justify-around pt-1">
         <!-- Tombol navigasi untuk tab Home -->
-        <button data-tab="home" class="nav-tab active-tab flex-1 py-2 px-1 text-center text-secondary">
+        <button data-tab="home" class="nav-tab active-tab flex-1 py-1 px-1 text-center text-secondary">
           <i class="fas fa-home text-xl"></i>
-          <span class="block text-xs mt-1">Home</span>
+          <span class="block text-[10px] mt-0.5">Home</span>
         </button>
         <!-- Tombol navigasi untuk tab Reservasi -->
-        <button data-tab="reservations" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary relative">
+        <button data-tab="reservations" class="nav-tab tab flex-1 py-1 px-1 text-center text-secondary relative">
           <i class="fas fa-list-alt text-xl"></i>
-          <span class="block text-xs mt-1">Reservasi</span>
+          <span class="block text-[10px] mt-0.5">Reservasi</span>
           <!-- Badge notifikasi untuk reservasi baru -->
           <span id="reservation-notification-badge" class="notification-badge">0</span>
         </button>
         <!-- Tombol navigasi untuk tab Pasien -->
-        <button data-tab="pasien" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary">
+        <button data-tab="pasien" class="nav-tab tab flex-1 py-1 px-1 text-center text-secondary">
           <i class="fas fa-users text-xl"></i>
-          <span class="block text-xs mt-1">Pasien</span>
+          <span class="block text-[10px] mt-0.5">Pasien</span>
         </button>
         <!-- Tombol navigasi untuk tab Laporan -->
-        <button data-tab="rekap" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary">
+        <button data-tab="rekap" class="nav-tab tab flex-1 py-1 px-1 text-center text-secondary">
           <i class="fas fa-chart-pie text-xl"></i>
-          <span class="block text-xs mt-1">Laporan</span>
+          <span class="block text-[10px] mt-0.5">Laporan</span>
         </button>
         <!-- Tombol navigasi untuk tab Manajemen -->
-        <button data-tab="management" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary">
+        <button data-tab="management" class="nav-tab tab flex-1 py-1 px-1 text-center text-secondary">
           <i class="fas fa-cogs text-xl"></i>
-          <span class="block text-xs mt-1">Manajemen</span>
+          <span class="block text-[10px] mt-0.5">Manajemen</span>
         </button>
+      </div>
+      
+      <!-- Watermark Copyright Terintegrasi -->
+      <div class="w-full text-center mt-0.5 pt-1 border-t border-primary/50">
+        <span class="text-[8px] font-medium text-secondary/70 uppercase tracking-widest flex items-center justify-center gap-1">
+          Didesain oleh <span class="font-bold theme-pink">Ahmad Ro'pat Tanjung</span> 
+          <span class="lowercase italic font-serif">by</span> 
+          <span class="font-bold theme-pink">Shafaqo</span>
+        </span>
       </div>
     </nav>
   </div>
@@ -1750,23 +1747,60 @@
       timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
       if (isPartus) return;
 
-      let startTime = new Date();
-      startTime.setHours(8, 30, 0, 0);
-      let endTime = new Date();
-      endTime.setHours(21, 30, 0, 0);
+      // =====================================================================
+      // 👇👇👇 PENGATURAN WAKTU RESERVASI (SILAKAN UBAH DI SINI) 👇👇👇
+      // =====================================================================
+      
+      // 1. MENGATUR RENTANG JAM OPERASIONAL
+      const JAM_BUKA = 8;        // Buka jam 08:00
+      const MENIT_BUKA = 30;     // Menit buka (08:30)
+      const JAM_TUTUP = 21;      // Tutup jam 21:00
+      const MENIT_TUTUP = 30;    // Menit tutup (21:30)
 
-      // --- KONFIGURASI JAM ISTIRAHAT ---
-      const BREAK_START_HOUR = 12; // Mulai istirahat jam 12:00
-      const BREAK_END_HOUR = 13;   // Selesai istirahat jam 13:00
-      // ---------------------------------
+      // 2. MENGATUR RENTANG/DURASI ANTAR SLOT (dalam menit)
+      // Ubah angka 30 menjadi 60 untuk interval 1 jam, atau 15 untuk 15 menit.
+      const INTERVAL_MENIT = 30; 
+      
+      // 3. MENGATUR RENTANG & JUMLAH SLOT ISTIRAHAT
+      // Jika ingin menambah jam istirahat, Anda bisa menambahkan kondisi di bawah.
+      const ISTIRAHAT_1_MULAI = 12; // Mulai istirahat pertama jam 12:00
+      const ISTIRAHAT_1_SELESAI = 13; // Selesai istirahat pertama jam 13:00
+      
+      // Contoh jika ada istirahat kedua (misal Ashar):
+      // const ISTIRAHAT_2_MULAI = 15;
+      // const ISTIRAHAT_2_SELESAI = 16;
+
+      // 4. MENGATUR JUMLAH SLOT RESERVASI (MAX KUOTA PER WAKTU)
+      // PENTING: Untuk mengatur max kuota pasien di satu waktu (misal max 2 orang di jam 08:30), 
+      // Anda harus mengaturnya di dalam skrip Google Apps Script (Backend), BUKAN di HTML ini.
+      // Di GAS, biasanya ada pengecekan jumlah data yang sudah masuk di jam/tanggal tersebut.
+
+      // =====================================================================
+      // 👆👆👆 PENGATURAN WAKTU RESERVASI SELESAI 👆👆👆
+      // =====================================================================
+
+      let startTime = new Date();
+      startTime.setHours(JAM_BUKA, MENIT_BUKA, 0, 0);
+      let endTime = new Date();
+      endTime.setHours(JAM_TUTUP, MENIT_TUTUP, 0, 0);
 
       while (startTime <= endTime) {
         const currentHour = startTime.getHours();
+        const currentMinute = startTime.getMinutes();
 
         // Cek apakah waktu saat ini masuk dalam jam istirahat
-        // Logika: Jika jam >= 12 DAN jam < 13 maka anggap sebagai waktu istirahat
-        // Ini akan menyembunyikan slot 12:00 dan 13:00
-        const isBreakTime = currentHour >= BREAK_START_HOUR && currentHour < BREAK_END_HOUR;
+        // Logika: Menyembunyikan slot waktu yang berada di antara jam istirahat
+        let isBreakTime = false;
+        
+        // Cek istirahat 1
+        if (currentHour >= ISTIRAHAT_1_MULAI && currentHour < ISTIRAHAT_1_SELESAI) {
+          isBreakTime = true;
+        }
+
+        // Contoh cara mengaktifkan istirahat ke-2:
+        // if (currentHour >= ISTIRAHAT_2_MULAI && currentHour < ISTIRAHAT_2_SELESAI) {
+        //   isBreakTime = true;
+        // }
 
         if (!isBreakTime) {
           const timeString = startTime.toLocaleTimeString('id-ID', {
@@ -1777,9 +1811,8 @@
           timeSelect.appendChild(new Option(timeString, timeString));
         }
 
-        // Tetap tambahkan 30 menit meskipun sedang istirahat, 
-        // agar loop berlanjut ke jam 15:00
-        startTime.setMinutes(startTime.getMinutes() + 30);
+        // Tambahkan interval waktu ke startTime untuk iterasi berikutnya
+        startTime.setMinutes(startTime.getMinutes() + INTERVAL_MENIT);
       }
     };
 
