@@ -1533,6 +1533,41 @@
       </div>
     </section>
 
+    <!--
+        SECTION: ULASAN PASIEN (TESTIMONIAL)
+        Menampilkan feedback yang dikirim langsung melalui aplikasi.
+    -->
+    <section id="ulasan-pasien" class="px-6 mb-24 reveal-up">
+      <div class="text-center mb-10">
+        <span class="text-brand-rose text-xs font-bold uppercase tracking-widest mb-2 block">Suara Hati Bunda</span>
+        <h2 class="font-serif text-3xl md:text-4xl text-brand-black">Pengalaman Bersama Amara</h2>
+        <p class="text-gray-500 text-sm mt-3 max-w-lg mx-auto">Ulasan tulus dari para ibu yang telah merasakan
+          kelembutan layanan kami.</p>
+      </div>
+
+      <!-- Wadah Testimonial Grid -->
+      <div id="testimonial-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <!-- Data ulasan akan dirender oleh JavaScript di sini. Ini contoh tampilan sementaranya -->
+        <div class="bg-white border border-pink-100 rounded-[2rem] p-6 shadow-sm hover:shadow-lg transition-all">
+          <div class="flex text-yellow-400 text-sm mb-3">
+            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
+              class="fas fa-star"></i><i class="fas fa-star"></i>
+          </div>
+          <p class="text-gray-600 text-sm italic mb-4">"Bidan nya sangat ramah, baby spa nya juga nyaman banget. Anak
+            saya langsung tidur pules setelah treatment. Terima kasih Amara!"</p>
+          <div class="flex items-center gap-3 border-t border-gray-100 pt-4">
+            <div
+              class="w-10 h-10 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center font-bold font-serif">
+              A</div>
+            <div>
+              <h4 class="text-sm font-bold text-gray-800">Alya Nabila</h4>
+              <p class="text-[10px] text-gray-400">Treatment: Baby Spa Ceria</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
     <!--
             SECTION: FOOTER
@@ -2308,6 +2343,17 @@
       // Bind counter checker to scroll as well in case they scroll past it fast
       window.addEventListener('scroll', startCounters);
 
+      // Pendeteksi Link Feedback (Memicu Modal Ulasan)
+      const urlParams = new URLSearchParams(window.location.search);
+      const feedbackResId = urlParams.get('feedback');
+      if (feedbackResId) {
+        setTimeout(() => {
+          if (typeof window.showFeedbackModal === 'function') {
+            window.showFeedbackModal(feedbackResId);
+          }
+        }, 1500); // Muncul setelah animasi preloader selesai
+      }
+
     });
 
 
@@ -2617,19 +2663,33 @@
      *  FITUR IN-APP FEEDBACK (ULASAN PASIEN)
      *  ======================================= **/
 
-    // 1. Fungsi Membuat Link WA Khusus
     window.sendFeedbackWA = (patientName, phone, therapist, reservationId) => {
+      // 1. Validasi ID Reservasi agar tidak "undefined"
+      if (!reservationId || reservationId === 'undefined') {
+        showToast('Sistem sedang memuat ID, coba lagi dalam 1 detik.', 'warning');
+        return;
+      }
+
       if (!phone || phone === 'N/A' || phone === '-') {
         showToast('Nomor HP tidak valid untuk dikirimi WA', 'error');
         return;
       }
 
-      let formattedPhone = phone.replace(/[^0-9]/g, '');
-      if (formattedPhone.startsWith('0')) formattedPhone = '62' + formattedPhone.substring(1);
+      // 2. Perbaikan Logika Parsing Nomor HP (Mencegah kode +82 Korea)
+      let formattedPhone = phone.toString().replace(/[^0-9]/g, '');
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '62' + formattedPhone.substring(1); // 0822 -> 62822
+      } else if (formattedPhone.startsWith('8')) {
+        formattedPhone = '62' + formattedPhone; // 822 -> 62822
+      }
+      // Jika user terlanjur input 6262 atau +6262
+      if (formattedPhone.startsWith('6262')) {
+        formattedPhone = formattedPhone.substring(2);
+      }
 
       const therapistName = therapist && therapist !== 'null' ? therapist : 'tim kami';
 
-      // Membuat URL dinamis yang mengarah kembali ke web ini dengan parameter ID Reservasi
+      // 3. Membuat URL Dinamis ke Aplikasi Ini
       const appBaseUrl = window.location.origin + window.location.pathname;
       const feedbackLink = `${appBaseUrl}?feedback=${reservationId}`;
 
@@ -2639,11 +2699,11 @@
     };
 
     // 2. Fungsi Menampilkan Modal Bintang Ulasan
+    // 4. Fungsi Menampilkan Modal Form Ulasan
     window.showFeedbackModal = (reservationId) => {
       const modalHtml = `
         <div id="feedback-modal" class="fixed inset-0 z-[300] flex items-center justify-center bg-black bg-opacity-60 p-4 backdrop-blur-sm">
             <div class="bg-card rounded-[2rem] shadow-2xl w-full max-w-sm relative overflow-hidden transform transition-all">
-                <!-- Ornamen Background -->
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-100 rounded-full mix-blend-multiply filter blur-2xl opacity-70"></div>
                 
                 <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center" onclick="closeModal('feedback-modal')">
@@ -2651,29 +2711,28 @@
                 </button>
                 
                 <div class="p-8 text-center relative z-10">
-                    <div class="w-20 h-20 bg-gradient-to-tr from-pink-100 to-rose-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl shadow-sm border border-white">
+                    <div class="w-16 h-16 bg-gradient-to-tr from-pink-100 to-rose-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm border border-white">
                         <i class="fas fa-heart"></i>
                     </div>
-                    <h2 class="text-2xl font-bold theme-pink mb-2 font-serif">Bagaimana Pengalaman Anda?</h2>
-                    <p class="text-sm text-secondary mb-6 leading-relaxed">Berikan penilaian untuk layanan Klinik Amara hari ini.</p>
+                    <h2 class="text-2xl font-bold theme-pink mb-1 font-serif">Ulasan Layanan</h2>
+                    <p class="text-xs text-secondary mb-5">Berikan penilaian untuk Klinik Amara hari ini.</p>
                     
-                    <form id="feedback-form" class="space-y-5">
+                    <form id="feedback-form" class="space-y-4">
                         <input type="hidden" name="reservationId" value="${reservationId}">
                         <input type="hidden" id="rating-value" name="rating" value="5">
                         
-                        <!-- Bintang Interaktif -->
-                        <div class="flex justify-center gap-3 text-4xl text-yellow-400" id="star-container">
-                            <i class="fas fa-star cursor-pointer star-rating transform transition-transform hover:scale-125" data-value="1"></i>
-                            <i class="fas fa-star cursor-pointer star-rating transform transition-transform hover:scale-125" data-value="2"></i>
-                            <i class="fas fa-star cursor-pointer star-rating transform transition-transform hover:scale-125" data-value="3"></i>
-                            <i class="fas fa-star cursor-pointer star-rating transform transition-transform hover:scale-125" data-value="4"></i>
-                            <i class="fas fa-star cursor-pointer star-rating transform transition-transform hover:scale-125" data-value="5"></i>
+                        <div class="flex justify-center gap-2 text-4xl text-yellow-400 mb-2" id="star-container">
+                            <i class="fas fa-star cursor-pointer star-rating transition-transform hover:scale-125" data-value="1"></i>
+                            <i class="fas fa-star cursor-pointer star-rating transition-transform hover:scale-125" data-value="2"></i>
+                            <i class="fas fa-star cursor-pointer star-rating transition-transform hover:scale-125" data-value="3"></i>
+                            <i class="fas fa-star cursor-pointer star-rating transition-transform hover:scale-125" data-value="4"></i>
+                            <i class="fas fa-star cursor-pointer star-rating transition-transform hover:scale-125" data-value="5"></i>
                         </div>
-                        <p class="text-sm font-bold text-yellow-500 bg-yellow-50 inline-block px-4 py-1 rounded-full" id="rating-text">Sangat Memuaskan</p>
+                        <p class="text-xs font-bold text-yellow-600 bg-yellow-50 inline-block px-3 py-1 rounded-full mb-2" id="rating-text">Sangat Memuaskan</p>
 
-                        <textarea name="comment" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner text-sm focus:ring-2 focus:ring-pink-300 focus:border-transparent transition-all" rows="3" placeholder="Ceritakan pengalaman Anda di sini (Opsional)..."></textarea>
+                        <textarea name="comment" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl shadow-inner text-sm focus:ring-2 focus:ring-pink-300 focus:border-transparent transition-all" rows="3" placeholder="Ceritakan pengalaman Anda di sini... (Opsional)"></textarea>
                         
-                        <button type="submit" class="w-full py-4 bg-brand-black text-white rounded-full font-bold shadow-lg hover:bg-gray-800 hover:-translate-y-1 transition-all">Kirim Ulasan</button>
+                        <button type="submit" class="w-full py-3.5 bg-brand-black text-white rounded-full font-bold shadow-lg hover:bg-gray-800 hover:-translate-y-1 transition-all">Kirim Ulasan</button>
                     </form>
                 </div>
             </div>
@@ -2681,7 +2740,7 @@
 
       document.getElementById('modals-container').innerHTML = modalHtml;
 
-      // Logika Bintang (Klik Bintang)
+      // Logika Klik Bintang
       const stars = document.querySelectorAll('.star-rating');
       const ratingInput = document.getElementById('rating-value');
       const ratingText = document.getElementById('rating-text');
@@ -2694,17 +2753,15 @@
           ratingText.textContent = texts[val - 1];
           stars.forEach((s, idx) => {
             if (idx < val) {
-              s.classList.remove('text-gray-300');
-              s.classList.add('text-yellow-400');
+              s.classList.remove('text-gray-300'); s.classList.add('text-yellow-400');
             } else {
-              s.classList.add('text-gray-300');
-              s.classList.remove('text-yellow-400');
+              s.classList.add('text-gray-300'); s.classList.remove('text-yellow-400');
             }
           });
         });
       });
 
-      // Submit Form
+      // Logika Simpan Form
       document.getElementById('feedback-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
@@ -2712,19 +2769,17 @@
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
         submitBtn.disabled = true;
 
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
+        const data = Object.fromEntries(new FormData(form).entries());
 
-        // Kirim ke backend (simulasi)
         try {
-          // Opsional: Nanti Anda bisa buat action 'submitFeedback' di Google Apps Script.
+          // Ini akan menembak backend Apps Script Anda (Anda perlu membuat case 'submitFeedback' di .gs nanti)
           await callBackend('POST', 'submitFeedback', data, true);
         } catch (err) {console.log(err);}
 
         closeModal('feedback-modal');
-        showToast('💖 Terima kasih! Ulasan Bunda telah kami terima.', 'success');
+        showToast('💖 Terima kasih! Ulasan Anda telah kami terima.', 'success');
 
-        // Hapus parameter ?feedback= dari URL agar modal tidak muncul lagi kalau direfresh
+        // Bersihkan URL dari parameter ?feedback= agar modal tidak terus-terusan muncul
         const url = new URL(window.location);
         url.searchParams.delete('feedback');
         window.history.replaceState({}, '', url);
@@ -3022,23 +3077,18 @@
         const waiting = todayReservations.filter(r => r.Status === 'Menunggu').length;
         const completed = todayReservations.filter(r => r.Status === 'Selesai').length;
 
-        // --- FITUR BARU: HITUNG KINERJA TERAPIS HARI INI (MODE LEADERBOARD) ---
+        // --- FITUR BARU: HITUNG KINERJA TERAPIS HARI INI (LEADERBOARD ESTETIK) ---
         let therapistPerformance = {};
 
-        // 1. Masukkan SEMUA terapis aktif ke dalam daftar
         if (state.data && state.data.therapists) {
           state.data.therapists.forEach(t => {
-            if (t.Status === 'Aktif') {
-              therapistPerformance[t.Nama_Terapis] = {total: 0, selesai: 0, menunggu: 0};
-            }
+            if (t.Status === 'Aktif') therapistPerformance[t.Nama_Terapis] = {total: 0, selesai: 0, menunggu: 0};
           });
         }
 
         todayReservations.forEach(r => {
           if (r.Terapis) {
-            if (!therapistPerformance[r.Terapis]) {
-              therapistPerformance[r.Terapis] = {total: 0, selesai: 0, menunggu: 0};
-            }
+            if (!therapistPerformance[r.Terapis]) therapistPerformance[r.Terapis] = {total: 0, selesai: 0, menunggu: 0};
             therapistPerformance[r.Terapis].total++;
             if (r.Status === 'Selesai') therapistPerformance[r.Terapis].selesai++;
             if (r.Status === 'Menunggu') therapistPerformance[r.Terapis].menunggu++;
@@ -3046,37 +3096,36 @@
         });
 
         const rankedTherapists = Object.entries(therapistPerformance).sort((a, b) => b[1].total - a[1].total);
-        const maxWorkload = Math.max(...rankedTherapists.map(d => d[1].total), 5);
+        const maxWorkload = Math.max(...rankedTherapists.map(d => d[1].total), 5); // Base skala
 
         const therapistHtml = rankedTherapists.length > 0
           ? rankedTherapists.map(([name, data], index) => {
             const percentSelesai = (data.selesai / maxWorkload) * 100;
             const percentMenunggu = (data.menunggu / maxWorkload) * 100;
 
-            // HANYA MENGGUNAKAN ANGKA RANKING BIASA (#1, #2, dst)
-            let rankIcon = `<span class="font-black text-gray-300 dark:text-gray-600 text-xl">#${index + 1}</span>`;
-
             return `
-                <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-pink-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-3">
-                    <div class="w-8 text-center shrink-0">
-                        ${rankIcon}
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex justify-between items-end mb-1.5">
+                <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-pink-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-gray-300 dark:text-gray-600 text-lg w-5">#${index + 1}</span>
                             <h4 class="text-sm font-bold text-gray-800 dark:text-gray-100">${name}</h4>
-                            <span class="text-[11px] font-bold text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">${data.total} Pasien</span>
                         </div>
-                        
-                        <!-- Bar Leaderboard -->
-                        <div class="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex shadow-inner relative group cursor-pointer">
-                            <div class="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-1000 ease-out" style="width: ${percentSelesai}%"></div>
-                            <div class="bg-gradient-to-r from-blue-400 to-blue-500 h-full transition-all duration-1000 ease-out" style="width: ${percentMenunggu}%"></div>
-                            
-                            <!-- Tooltip Detail Muncul Saat Hover -->
-                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
-                                ${data.selesai} Selesai | ${data.menunggu} Antri
-                            </div>
-                        </div>
+                    </div>
+                    
+                    <!-- Info Kiri (Selesai) vs Kanan (Antri/Total) -->
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-gray-700 px-2 py-0.5 rounded shadow-sm">
+                            <i class="fas fa-check-circle mr-1"></i> ${data.selesai} Selesai
+                        </span>
+                        <span class="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-gray-700 px-2 py-0.5 rounded shadow-sm">
+                            ${data.menunggu} Antri <i class="fas fa-clock ml-1"></i>
+                        </span>
+                    </div>
+
+                    <!-- Bar Grafik -->
+                    <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full flex overflow-hidden shadow-inner mt-1">
+                        <div class="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-1000 ease-out" style="width: ${percentSelesai}%" title="${data.selesai} Selesai"></div>
+                        <div class="bg-gradient-to-r from-blue-400 to-blue-500 h-full transition-all duration-1000 ease-out" style="width: ${percentMenunggu}%" title="${data.menunggu} Antri"></div>
                     </div>
                 </div>
             `;
@@ -3185,7 +3234,7 @@
                             
                             ${res.Status !== 'Selesai' ? `<button onclick="showEditTimeModal('${res.ID_Reservasi}')" class="text-orange-500 hover:underline text-sm font-medium px-2"><i class="fas fa-calendar-day mr-1"></i>Reschedule</button>` : ''}
                             ${res.Status !== 'Selesai' ? `<button onclick="requestCompleteAction('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm hover:bg-green-600 transition-colors">Selesaikan</button>` : ''}
-                            ${res.Status === 'Selesai' ? `<button onclick="sendFeedbackWA('${res.Nama_Pasien}', '${res.No_HP}', '${res.Terapis}')" class="bg-yellow-50 dark:bg-gray-800 text-yellow-600 border border-yellow-200 hover:bg-yellow-100 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium flex items-center gap-1.5 shadow-sm"><i class="fas fa-star text-yellow-400"></i> Minta Ulasan</button>` : ''}
+                            ${res.Status === 'Selesai' ? `<button onclick="sendFeedbackWA('${res.Nama_Pasien}', '${res.No_HP}', '${res.Terapis}', '${res.ID_Reservasi}')" class="bg-yellow-50 dark:bg-gray-800 text-yellow-600 border border-yellow-200 hover:bg-yellow-100 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium flex items-center gap-1.5 shadow-sm"><i class="fas fa-star text-yellow-400"></i> Minta Ulasan</button>` : ''}
                         </div>
                     </div>`;
       }).join('')}</div>`;
